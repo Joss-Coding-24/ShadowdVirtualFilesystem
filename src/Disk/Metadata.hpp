@@ -1,7 +1,6 @@
 #pragma once
-#include "../Files/ShadowdFile.hpp"
 #include <string>
-#include "../Files/ShadowdDirectory.hpp"
+#include "../Files/ShadowdNode.hpp"
 
 class Metadata{
   public:

@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "../Files/ShadowdFile.hpp"
+#include "../Files/ShadowdNode.hpp"
 #include "../Disk/Metadata.hpp"
 
 class AllocatorBlocks{

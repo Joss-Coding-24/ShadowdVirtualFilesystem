@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstdint>
 
-class ShadowdFile{
+class ShadowdNode{
   public:
     std::vector<uint8_t> removeAndGetToLast(size_t end){
       std::vector<uint8_t> last;
@@ -10,4 +10,5 @@ class ShadowdFile{
     }
 };
 
-using SFile = ShadowdFile;
+using SFile = ShadowdNode;
+using SDirectory = ShadowdNode;
