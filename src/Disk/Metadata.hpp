@@ -1,6 +1,7 @@
 #pragma once
 #include "../Files/ShadowdFile.hpp"
 #include <string>
+#include "../Files/ShadowdDirectory.hpp"
 
 class Metadata{
   public:
@@ -8,4 +9,6 @@ class Metadata{
   std::string path;
   int sizeBlock;
   SFile freesFile;
+  SDirectory load();
+  SDirectory make();
 };

@@ -1,5 +1,5 @@
-#include "Block/AllocatorBlocks.hpp"
-#include "Helpers/BigEndianCover.hpp"
+#include "AllocatorBlocks.hpp"
+#include "../Helpers/BigEndianCover.hpp"
 
 std::string AllocatorBlocks::getDiskPath(){
   return "test";
