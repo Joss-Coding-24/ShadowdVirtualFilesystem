@@ -3,10 +3,11 @@
 #include <vector>
 #include "../Files/ShadowdNode.hpp"
 #include "../Disk/Metadata.hpp"
+#include "../Helpers/RandomAccessFile.hpp"
 
 class AllocatorBlocks{
   public:
-    explicit AllocatorBlocks(Metadata metadata){
+    explicit AllocatorBlocks(Metadata& metadata){
       maxis.push_back(0);
       maxis.push_back(0);
       maxis.push_back(0);
@@ -15,6 +16,9 @@ class AllocatorBlocks{
       frees = metadata.freesFile;
       path = metadata.path;
       if(metadata.sizeBlock>0) blockSize = metadata.sizeBlock;
+      RandomAccessFile raf(path);
+      size_t size = raf.size();
+      totalBlocks = size/blockSize;
     }
     template<typename BlockType>
     BlockType* get(size_t pos){
@@ -42,7 +46,7 @@ class AllocatorBlocks{
       }
     }
   private:
-    uint64_t totalBlocks = 0;
+    uint64_t totalBlocks;
     SFile frees;
     std::vector<size_t> maxis;
     std::string path;

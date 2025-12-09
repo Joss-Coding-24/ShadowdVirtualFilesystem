@@ -10,4 +10,6 @@ class Metadata{
   SFile freesFile;
   SDirectory load();
   SDirectory make();
+  void persist(SDirectory dir);
+  SDirectory loadOrGenerateDisk();
 };

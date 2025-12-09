@@ -10,7 +10,7 @@
 
 class BaseShadowdBlock{
   public:
-    explicit BaseShadowdBlock(int indexVar, AllocBlock* allocVar);
+    explicit BaseShadowdBlock(int indexVar, AllocBlock& allocVar);
     bool isFree;
     size_t freeBytes;
     size_t writed;
@@ -26,7 +26,7 @@ class BaseShadowdBlock{
   private:
     size_t countNext = 0;
     int index;
-    Alloc* alloc; // alias de AllocatorBlock
+    Alloc alloc; // alias de AllocatorBlock
     void readIntern();
     long start;
     long size;
