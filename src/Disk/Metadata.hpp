@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include "../Files/ShadowdNode.hpp"
-#include "BootstrapTable.hpp"
 
 class Metadata{
   public:
@@ -14,5 +13,4 @@ class Metadata{
   void persist(SDirectory dir);
   SDirectory loadOrGenerateDisk();
 private:
-  Table bootstrap;
 };
