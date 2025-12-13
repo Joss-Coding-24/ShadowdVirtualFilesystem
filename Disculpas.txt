@@ -1,0 +1,7 @@
+13/12/2005
+Pido dusculpas a quien este leyendo este repo.
+Tuve un problema con el gestor de contraseñas de mi maquina, debido a esto me vi obligado a apicar un recovery, debido a esto perdi el 75% del repo que le aria comit el dia de ayer, adicional a eso, perdi el seudo codigo.
+Ahora sin la guia que llevaba solo me queda por recrear el proyecto con lo que ya tengo en el repo
+Ademas a eso, mi maquina lleva desde ayer eliminando el proceso de mi ide, y otros procesos esenciales para el proyecto shadowd.
+
+Agradezco la paciencia [[Joss-Codind][Joss-Coding-24]]
