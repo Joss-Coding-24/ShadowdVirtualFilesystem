@@ -27,7 +27,7 @@
       if (saved == written) return;
 
       for (size_t i = saved; i < written; i++) {
-        entryType entry = entries[i];
+        entryType& entry = entries[i];
         if(!entry.valid) {
           countWrite = i;
           return;
@@ -36,9 +36,9 @@
         countSave++;
       }
     }
-    int writeBlock(std::vector<uint8_t> data){
+    size_t writeBlock(std::vector<uint8_t> data){
       int layer = entryType::layer+1;
-      size_t max = alloc->max(layer);
+      uint64_t max = alloc->max(layer);
       size_t off = 0;
 
       while (true) {
@@ -55,13 +55,13 @@
         size_t size = tmp.size();
         if(size == 0) break;
 
-        entryType entry = entries[pos];
+        entryType& entry = entries[pos];
         if(!entry.valid) {
           getIntern();
           continue;
         }
-        typeBlock block = entry.block;
-        int writed = block.writeBlock(tmp);
+        typeBlock& block = entry.block;
+        size_t writed = block.writeBlock(tmp);
         if(writed == -1 && off == 0) {
           countWrite++;
           continue;
@@ -69,8 +69,8 @@
           block.clearLoteBlock();
           continue;
         }
-        off += static_cast<size_t > (writed);
-        if(size <= off) break;
+        off += writed;
+        if(size <= writed) break;
       }
       return static_cast<int>(off);
     }
@@ -78,52 +78,62 @@
       int layer = entryType::layer+1;
       size_t max = static_cast<size_t > (alloc->max(layer));
       for(size_t i = 0; i < max; i++) {
-        if(i > entries.size()) {
+        if(i >= entries.size()) {
           if(getIntern(false) < 0) break;
         }
-        entryType entry = entries[i];
+        entryType& entry = entries[i];
         entry.block.clearLoteBlock();
         alloc->freeBlock(entry.pos);
       }
       root.block.clearLoteBlock();
       entries.clear();
+      countNext = 0;
+      countSave = 0;
+      countWrite = 0;
     }
-    void deleteEntry(entryType entry){
-      entry.block.clearLoteBlock();
-      alloc->freeBlock(entry.pos);
-      entries.erase(
-        std::remove_if(
-          entries.begin(),
-          entries.end(),
-          [&](const entryType& e) {
-            return e.pos == entry.pos;
-          }
-        ),
-        entries.end()
+    void deleteEntry(const entryType& entry){
+      auto it = std::find_if(
+        entries.begin(),
+        entries.end(),
+        [&](const entryType& e){
+          return e.pos == entry.pos;
+        }
       );
+      if(it == entries.end()) return;
+
+      for(auto jt = it; jt != entries.end(); ++jt){
+        jt->block.clearLoteBlock();
+        alloc->freeBlock(jt->pos);
+      }
+
+      entries.erase(it, entries.end());
+
+      //Actualizamos root
+      root.block.clearLoteBlock();
+      root.block.writeBlock(entries.data());
+      root.block.writeIntern();
     }
     entryType getEntry(size_t pos, bool create = true){
       int layer = entryType::layer+1;
       size_t max = alloc->max(layer);
-      if(pos > 0 && pos <= max){
-        if(pos > entries.size()) {
-          if(!create) {
-            entryType type;
-            type.valid = false;
-            return  type;
-          }
-          if(getIntern(create) < 0) {
-            entryType type;
-            type.valid = false;
-            return  type;
-          }
-        }
-        return entries[pos];
-      }else{
+      if(pos >= max){
         entryType type;
         type.valid = false;
         return type;
       }
+      if(pos >= entries.size()) {
+        if(!create) {
+          entryType type;
+          type.valid = false;
+          return  type;
+        }
+        if(getIntern(create) < 0) {
+          entryType type;
+          type.valid = false;
+          return  type;
+        }
+      }
+      return entries[pos];
     }
     std::string toString(){
       int layer = entryType::layer+1;
@@ -165,28 +175,34 @@
       }
       return result;
     }
-    std::vector<uint8_t> readTo(size_t start){}
-    std::vector<uint8_t> readTo(size_t start, size_t end){
-      size_t size = alloc->blockSize;
-      if(start > end || end <= 0 || start < 0){
-        return {};
+    std::vector<uint8_t> readTo(uint64_t start){
+      return readTo(start, start+8);
+    }
+    std::vector<uint8_t> readTo(uint64_t start, uint64_t end) {
+      uint64_t size = alloc->span(entryType::layer);
+      if (start >= end) return {};
+
+      std::vector<uint8_t> data;
+      uint64_t pos = start;
+
+      while (pos < end) {
+        size_t cBlock = pos / size;
+        uint64_t localStart = pos % size;
+        uint64_t localEnd =
+            std::min(size, end - cBlock * size);
+        
+        if (cBlock >= entries.size()) {
+          if (getIntern(false) < 0) break;
+        }
+        if (cBlock >= entries.size()) break;
+        auto buffer = entries[cBlock].readTo(localStart, localEnd);
+        if (buffer.empty()) break;
+
+        data.insert(data.end(), buffer.begin(), buffer.end());
+        pos += buffer.size();
       }
 
-      if(end < size){ // si se van a leer dentro del primer bloque
-        return entries[0].readTo(start, end);
-      }
-
-      size_t cStart = start;
-      size_t cEnd = end;
-      size_t cBlock = 0;
-      // si el inicio
-      while(cStart > size){
-        cStart -= size;
-        cEnd -= size;
-        cBlock += 1;
-      }
-
-
+      return data;
     }
   private:
     size_t countSave = 0;
@@ -195,17 +211,17 @@
     Alloc* alloc;
     std::vector<entryType> entries;
     entryType root;
-    int getIntern(bool create = true){
+    uint64_t getIntern(bool create = true){
       int layer = entryType::layer+1;
 
       if (entries.size() + 1 > alloc -> max(layer)) return -2;
 
-      uint8_t* next = root.block->readTo(entries.size() * 8);
-      if (!next) {
+      std::vector<uint8_t> next = root.block.readTo(entries.size() * 8);
+      if (next.size()==0) {
         return create ? genIntern(): -3;
       }
 
-      int v = beToSize(next, 8);
+      uint64_t v = beToU64(next, 8);
       loadIntern(v);
       return v;
     }
@@ -219,14 +235,12 @@
     int genIntern(){
       int layer = entryType::layer+1;
       if(entries.size()+1 > alloc->max(layer)) return -2;
-      size_t pos = alloc->gen();
+      uint64_t pos = alloc->gen();
       if(pos == 0) return -3;
-      std::vector < uint8_t > ending;
-      uint8_t* data = intToBe(pos, 8);
-      ending.insert(ending.end(), data, data+8);
-      int writed = root.block -> writeBlock(ending);
+      std::vector < uint8_t > ending = intToBe(pos, 8);
+      int writed = root.block.writeBlock(ending);
       if(writed <= 0) return -1;
-      root.block -> writeIntern();
+      root.block.writeIntern();
       loadIntern(pos);
       return pos;
     }
