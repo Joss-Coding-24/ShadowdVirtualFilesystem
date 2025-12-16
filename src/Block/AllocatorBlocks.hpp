@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <sys/types.h>
 #include <vector>
 #include "../Files/ShadowdNode.hpp"
 #include "../Disk/Metadata.hpp"
@@ -14,8 +15,9 @@ class AllocatorBlocks{
     size_t gen();
     int blockSize = 252;
     std::string getDiskPath();
-    size_t max(int layer);
+    uint64_t max(int layer);
     std::string getBlockName(int layer);
+    uint64_t span(int layer);
   private:
     uint64_t totalBlocks;
     SFile frees;

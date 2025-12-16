@@ -2,6 +2,8 @@
 /**
  * template para capa 2+
  */
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include "AllocatorBlocks.hpp"
@@ -163,6 +165,29 @@
       }
       return result;
     }
+    std::vector<uint8_t> readTo(size_t start){}
+    std::vector<uint8_t> readTo(size_t start, size_t end){
+      size_t size = alloc->blockSize;
+      if(start > end || end <= 0 || start < 0){
+        return {};
+      }
+
+      if(end < size){ // si se van a leer dentro del primer bloque
+        return entries[0].readTo(start, end);
+      }
+
+      size_t cStart = start;
+      size_t cEnd = end;
+      size_t cBlock = 0;
+      // si el inicio
+      while(cStart > size){
+        cStart -= size;
+        cEnd -= size;
+        cBlock += 1;
+      }
+
+
+    }
   private:
     size_t countSave = 0;
     size_t countWrite = 0;
@@ -180,7 +205,7 @@
         return create ? genIntern(): -3;
       }
 
-      int v = beToInt(next, 8);
+      int v = beToSize(next, 8);
       loadIntern(v);
       return v;
     }

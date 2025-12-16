@@ -2,11 +2,11 @@
 #include "BaseShadowdBlock.hpp"
 #include "../Helpers/BigEndianCover.hpp"
 #include <sstream>
+#include <vector>
 
-BaseShadowdBlock::BaseShadowdBlock(int indexVar, AllocBlock* allocVar) {
+BaseShadowdBlock::BaseShadowdBlock(int indexVar, AllocBlock& allocVar): alloc(allocVar){
   index = indexVar;
-  alloc = allocVar;
-  size = alloc->blockSize;
+  size = alloc.blockSize;
   HEAD = 4;
   DATA = size-4;
   start = (size*index)+4; // el tamaño de bloque se guarda en 4b
@@ -19,15 +19,15 @@ std::vector < uint8_t > BaseShadowdBlock::read() {
   return buffer;
 }
 void BaseShadowdBlock::writeIntern() {
-  std::string path = alloc->getDiskPath();
+  std::string path = alloc.getDiskPath();
   RandomAccessFile raf(path);
 
   size_t toWrite = (buffer.size() < DATA) ? buffer.size(): DATA;
   size_t count = start;
 
-  uint8_t* header = intToBe(writed, HEAD);
+  std::vector<uint8_t> header = sizeToBe(writed, HEAD);
 
-  raf.writeAt(header, HEAD, count);
+  raf.writeAt(header.data(), HEAD, count);
   count += HEAD;
 
   raf.writeAt(buffer.data(), toWrite, count);
@@ -104,14 +104,16 @@ std::vector < uint8_t > BaseShadowdBlock::readTo(size_t start) {
 void BaseShadowdBlock::readIntern() {
   buffer.clear();
   size_t count = start;
-  std::string path = alloc->getDiskPath();
+  std::string path = alloc.getDiskPath();
   RandomAccessFile raf(path);
 
   uint8_t head[HEAD];
   raf.readAt(head, HEAD, count);
   count += HEAD;
+  std::vector<uint8_t> headBytes;
+  headBytes.insert(headBytes.end(), head, head+HEAD);
 
-  writed = beToInt(head, HEAD);
+  writed = beToSize(headBytes, HEAD);
   if(writed>DATA) writed = DATA;
   if(writed > 0) {
     freeBytes = DATA - writed;
@@ -169,5 +171,5 @@ int BaseShadowdBlock::next(){
   if(writed<=0) return -2;
   if(count<8) return -3;
   if(count>writed) return -1;
-  return beToInt(readTo(count).data(), 8);
+  return beToInt(readTo(count), 8);
 }

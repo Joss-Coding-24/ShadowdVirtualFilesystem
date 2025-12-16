@@ -18,12 +18,6 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Objetivo opcional: solo instalar sin recompilar
-install: $(TARGET)
-	@cp $(TARGET) $(HOME)/$(TARGET)
-	@chmod +x $(HOME)/$(TARGET)
-	@echo ">> Instalado en $(HOME)/$(TARGET)"
-
 # Limpieza
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)

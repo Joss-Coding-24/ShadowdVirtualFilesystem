@@ -1,12 +1,11 @@
 #include "AllocatorBlocks.hpp"
 #include "../Helpers/BigEndianCover.hpp"
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 
 AllocatorBlocks::AllocatorBlocks(Metadata& metadata){
-  maxis.push_back(0);
-  maxis.push_back(0);
-  maxis.push_back(0);
-  maxis.push_back(0);
-  maxis.push_back(0);
   frees = metadata.freesFile;
   path = metadata.path;
   if(metadata.sizeBlock>0) blockSize = metadata.sizeBlock;
@@ -19,9 +18,7 @@ BlockType* AllocatorBlocks::get(size_t pos){
   return new BlockType(pos, this);
 }
 void AllocatorBlocks::freeBlock(size_t pos){
-  std::vector<uint8_t> data;
-  uint8_t* bytes =  intToBe(pos, 8);
-  data.insert(data.end(), bytes, bytes+8);
+  std::vector<uint8_t> data =  sizeToBe(pos, 8);
   frees.AddToLast(data);
 }
 size_t AllocatorBlocks::gen(){
@@ -44,25 +41,26 @@ std::string AllocatorBlocks::getBlockName(int layer){
     default: return "UnknownShadowdBlock";
   }
 }
-size_t AllocatorBlocks::max(int layer) {
-    if (layer <= 0) return 0;              // evitar abismos lógicos
-    if (maxis[layer] > 0) return maxis[layer];
-
-    size_t punters = (blockSize - 4) / 8;  // punteros por bloque
-    size_t numMax = 1;
-
-    for (int l = 0; l < layer; ++l) {
-        numMax *= punters;
-    }
-
-    maxis[layer] = numMax;
-    return numMax;
+/*
+* Para no volver a aolvidar que hace max lo anoto aca
+* max cumple coon ver cuantos bloques caben en un root
+* Capa 2 tiene un layer 1 como root, por lo que le caben 3
+*
+*    L1 = 31 C1
+*    L2 = 31*31 C2
+*    ...
+*
+* En resumen, una layer tiene 31^layer bloques del mismo nivel
+*/
+uint64_t AllocatorBlocks::max(int layer) {
+  size_t punters = (blockSize-4)/8;
+  return pow(punters, layer);
 }
 size_t AllocatorBlocks::readFrees(){
   std::vector<uint8_t> end = frees.removeAndGetToLast(8);
   int size = end.size();
   if(size<=0) return 0;
-  return static_cast<size_t> (beToInt(end.data(), size));
+  return beToSize(end, size);
 }
 size_t AllocatorBlocks::generateBlock() {
     if (totalBlocks == std::numeric_limits<uint64_t>::max()) {
@@ -72,4 +70,16 @@ size_t AllocatorBlocks::generateBlock() {
     size_t newIndex = totalBlocks;
     totalBlocks += 1;
     return newIndex;
+}
+uint64_t AllocBlock::span(int layer){
+  //Determina cuantos bytes cubre un block en un layer
+  uint64_t bytes = blockSize-4;
+
+  for(int count = layer-1; count >=0; count--){ 
+    uint64_t punters = max(count);
+    if(bytes > UINT64_MAX/punters) return UINT64_MAX;
+
+    bytes *= punters;
+  }
+  return bytes;
 }

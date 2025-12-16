@@ -26,12 +26,12 @@ class BaseShadowdBlock{
   private:
     size_t countNext = 0;
     int index;
-    Alloc alloc; // alias de AllocatorBlock
+    AllocBlock alloc; // alias de AllocatorBlock
     void readIntern();
     long start;
     long size;
     uint8_t HEAD;
-    int DATA;
+    size_t DATA;
     std::vector<uint8_t> buffer;
     std::string toString() const;
 };
