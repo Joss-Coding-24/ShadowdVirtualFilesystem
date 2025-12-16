@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include "../Helpers/RandomAccessFile.hpp"
 
 AllocatorBlocks::AllocatorBlocks(Metadata& metadata){
   frees = metadata.freesFile;
@@ -14,8 +15,8 @@ AllocatorBlocks::AllocatorBlocks(Metadata& metadata){
   totalBlocks = size/blockSize;
 }
 template<typename BlockType>
-BlockType* AllocatorBlocks::get(size_t pos){
-  return new BlockType(pos, this);
+BlockType AllocatorBlocks::get(size_t pos){
+  return BlockType(pos, this);
 }
 void AllocatorBlocks::freeBlock(size_t pos){
   std::vector<uint8_t> data =  sizeToBe(pos, 8);
@@ -36,7 +37,7 @@ std::string AllocatorBlocks::getBlockName(int layer){
     case 1: return "BaseShadowdBlock";
     case 2: return "SmallShadowdBlock";
     case 3: return "MediumShadowdBlock";
-    case 4: return "GreadShadowdBlock";
+    case 4: return "GreatShadowdBlock";
     case 5: return "LargeShadowdBlock";
     default: return "UnknownShadowdBlock";
   }
@@ -53,13 +54,19 @@ std::string AllocatorBlocks::getBlockName(int layer){
 * En resumen, una layer tiene 31^layer bloques del mismo nivel
 */
 uint64_t AllocatorBlocks::max(int layer) {
-  size_t punters = (blockSize-4)/8;
-  return pow(punters, layer);
+  uint64_t punters = (blockSize - 4) / 8;
+  uint64_t result = 1;
+
+  for(int i = 0; i < layer; ++i) {
+    if(result > UINT64_MAX / punters) return UINT64_MAX;
+    result *= punters;
+  }
+  return result;
 }
 size_t AllocatorBlocks::readFrees(){
   std::vector<uint8_t> end = frees.removeAndGetToLast(8);
   int size = end.size();
-  if(size<=0) return 0;
+  if(size < 8) return 0;
   return beToSize(end, size);
 }
 size_t AllocatorBlocks::generateBlock() {
@@ -72,13 +79,11 @@ size_t AllocatorBlocks::generateBlock() {
     return newIndex;
 }
 uint64_t AllocBlock::span(int layer){
-  //Determina cuantos bytes cubre un block en un layer
-  uint64_t bytes = blockSize-4;
+  uint64_t punters = (blockSize - 4) / 8;
+  uint64_t bytes = blockSize - 4;
 
-  for(int count = layer-1; count >=0; count--){ 
-    uint64_t punters = max(count);
-    if(bytes > UINT64_MAX/punters) return UINT64_MAX;
-
+  for(int i =1; i < layer; ++i){
+    if(bytes > UINT64_MAX / punters) return UINT64_MAX;
     bytes *= punters;
   }
   return bytes;

@@ -4,13 +4,12 @@
 #include <vector>
 #include "../Files/ShadowdNode.hpp"
 #include "../Disk/Metadata.hpp"
-#include "../Helpers/RandomAccessFile.hpp"
 
 class AllocatorBlocks{
   public:
     explicit AllocatorBlocks(Metadata& metadata);
     template<typename BlockType>
-    BlockType* get(size_t pos);
+    BlockType get(size_t pos);
     void freeBlock(size_t pos);
     size_t gen();
     int blockSize = 252;
