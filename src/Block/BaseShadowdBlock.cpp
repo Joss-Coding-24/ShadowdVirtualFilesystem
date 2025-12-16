@@ -1,6 +1,7 @@
 #include "../Helpers/RandomAccessFile.hpp"
 #include "BaseShadowdBlock.hpp"
 #include "../Helpers/BigEndianCover.hpp"
+#include <cstddef>
 #include <sstream>
 #include <vector>
 
@@ -31,6 +32,8 @@ void BaseShadowdBlock::writeIntern() {
   count += HEAD;
 
   raf.writeAt(buffer.data(), toWrite, count);
+
+  isFree = (writed == 0);
 }
 int BaseShadowdBlock::writeBlock(std::vector < uint8_t > data) {
   if (freeBytes == 0) return -1;
@@ -71,7 +74,7 @@ bool BaseShadowdBlock::removeToLast(int end) {
   }
 
   size_t sz = buffer.size();
-  if (sz < static_cast<size_t > (end)) {
+  if (sz < static_cast<size_t> (end)) {
     return false; // no hay suficientes bytes
   }
 
@@ -165,11 +168,9 @@ std::vector<uint8_t> BaseShadowdBlock::removeAngGetToLast(int end) {
 
     return tail;
 }
-int BaseShadowdBlock::next(){
-  size_t count = countNext;
-  countNext+=8;
-  if(writed<=0) return -2;
-  if(count<8) return -3;
-  if(count>writed) return -1;
-  return beToInt(readTo(count), 8);
+size_t BaseShadowdBlock::next(){
+  if (countNext + 8 > writed) return -1;
+  auto v = beToSize(readTo(countNext), 8);
+  countNext += 8;
+  return v;
 }

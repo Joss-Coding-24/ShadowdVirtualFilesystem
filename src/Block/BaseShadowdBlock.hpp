@@ -22,9 +22,9 @@ class BaseShadowdBlock{
     std::vector<uint8_t> removeAngGetToLast(int end = 8);
     std::vector<uint8_t> readTo(size_t start, size_t end);
     std::vector<uint8_t> readTo(size_t start);
-    int next();
+    size_t next();
   private:
-    size_t countNext = 0;
+    size_t countNext = 8;
     int index;
     AllocBlock alloc; // alias de AllocatorBlock
     void readIntern();
