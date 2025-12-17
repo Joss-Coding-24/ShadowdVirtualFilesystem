@@ -18,9 +18,9 @@ class AllocatorBlocks{
     std::string getBlockName(int layer);
     uint64_t span(int layer);
   private:
-    uint64_t totalBlocks;
-    SFile frees;
+    ShadowdNode frees;
     std::vector<size_t> maxis;
+    uint64_t totalBlocks = 0;
     std::string path;
     size_t readFrees();
     size_t generateBlock();

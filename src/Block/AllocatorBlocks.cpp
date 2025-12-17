@@ -1,13 +1,13 @@
 #include "AllocatorBlocks.hpp"
 #include "../Helpers/BigEndianCover.hpp"
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include "../Helpers/RandomAccessFile.hpp"
 
-AllocatorBlocks::AllocatorBlocks(Metadata& metadata){
-  frees = metadata.freesFile;
+AllocatorBlocks::AllocatorBlocks(Metadata& metadata):
+  frees(*this, 1)
+{
   path = metadata.path;
   if(metadata.sizeBlock>0) blockSize = metadata.sizeBlock;
   RandomAccessFile raf(path);

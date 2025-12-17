@@ -7,7 +7,7 @@
 
 class Disk {
   public:
-    Disk(std::string pathVar, int blockSizeVar);
+    explicit Disk(std::string pathVar, int blockSizeVar);
     void persist();
     bool backup();
     bool restore(int inten = 0);
