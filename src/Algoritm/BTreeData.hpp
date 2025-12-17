@@ -73,23 +73,23 @@ class BTreeData{
         }
     private:
         bSB block;
-        std::vector<int> caps;
+        std::vector<size_t> caps;
         size_t next = 0;
         size_t before = 0;
         std::string name;
         bool nameLoaded = false;
         void readLayer_(int layer){
             std::vector<uint8_t> bytes = block.readTo(242+layer, 243+layer);
-            caps[layer] = beToInt(bytes.data(), 1);
+            caps[layer] = beToSize(bytes, 1);
         }
         
         void readPunter(bool punter){
             if(punter){
                 std::vector<uint8_t> bytes = block.readTo(226, 233);
-                next = static_cast<size_t>(beToInt(bytes.data(), 8));
+                next = beToSize(bytes, 8);
             }else{
                 std::vector<uint8_t> bytes = block.readTo(234, 241);
-                before = static_cast<size_t>(beToInt(bytes.data(), 8));
+                before =beToInt(bytes, 8);
             }
         }
 
@@ -110,20 +110,19 @@ class BTreeData{
         }
 
         std::vector<uint8_t> writePunters(){
-            std::vector<uint8_t> buffer;
-            uint8_t *bytesN, *bytesB;
-            bytesN = intToBe(next, 8);
-            bytesB = intToBe(before, 8);
-            buffer.insert(buffer.end(), bytesN, bytesN+8);
-            buffer.insert(buffer.end(), bytesB, bytesB+8);
+            std::vector<uint8_t> buffer, bytesN, bytesB;
+            bytesN = sizeToBe(next, 8);
+            bytesB = sizeToBe(before, 8);
+            buffer.insert(buffer.end(), bytesN.begin(), bytesN.end());
+            buffer.insert(buffer.end(), bytesB.begin(), bytesB.end());
             return buffer;
         }
 
         std::vector<uint8_t> writeCaps(){
             std::vector<uint8_t> buffer;
             for(int i = 0; i < 7; i++){
-                uint8_t* bytes = intToBe(caps[i], 1);
-                buffer.insert(buffer.end(), bytes, bytes+1);
+                std::vector<uint8_t> bytes = intToBe(caps[i], 1);
+                buffer.insert(buffer.end(), bytes.begin(), bytes.end());
             }
             return buffer;
         }
