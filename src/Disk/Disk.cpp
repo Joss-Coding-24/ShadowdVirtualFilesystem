@@ -6,7 +6,6 @@
  */
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -49,7 +48,9 @@ bool borrarArchivo(const fs::path& archivo){
 /*Fin de codigo generado*/
 
 Disk::Disk(std::string pathVar, int blockSizeVar)
-    : meta(blockSizeVar, pathVar), alloc(meta)
+    : meta(blockSizeVar, pathVar), 
+    alloc(meta),
+    rootDirectory(alloc, 2)
 {
     //definimoa los paths al disco virtual
     fs::path archivo(pathVar);
@@ -65,12 +66,12 @@ Disk::Disk(std::string pathVar, int blockSizeVar)
     if(!archivoExiste(archivo)){
         //si mo existe creamos uno nuevo
         crearArchivo(archivo);
-        rootDirectory = meta.make();
+        rootDirectory = meta.make(alloc);
     }
 
     //si ya existia uno entonces
     else{
-        rootDirectory = meta.load();
+        rootDirectory = meta.load(alloc);
     }
 }
 
@@ -103,6 +104,10 @@ bool Disk::restore(int intent){
         borrarArchivo(archivo);
     }
     
-    rootDirectory = meta.loadOrGenerateDisk();
+    if(archivoExiste(archivo)){
+        rootDirectory = meta.load(alloc);
+    }else{
+        rootDirectory = meta.make(alloc);
+    }
     return true;
 }
