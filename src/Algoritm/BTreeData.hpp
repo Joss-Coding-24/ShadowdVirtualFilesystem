@@ -9,11 +9,14 @@
 
 class BTreeData{
     public:
-        explicit BTreeData(size_t pos, Alloc& alloc) :
-            block(pos, alloc)
+        explicit BTreeData(size_t posVar, Alloc& alloc) :
+            block(posVar, alloc),
+            pos(posVar)
         {
-            caps.resize(7, -1);
+            caps.resize(    7, -1);
         }
+
+        const size_t pos;
 
         std::string getName(){
             if(nameLoaded) readName();
