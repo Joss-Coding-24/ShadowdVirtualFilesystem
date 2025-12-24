@@ -1,46 +1,53 @@
+/*
+* Para ver la versuon de bloque anterior revisar el archivo
+* .txt con nombre similar a este 
+*/
+
 #pragma once
 #include "AllocatorBlocks.hpp"
+#include <cstddef>
+#include <cstdint>
+#include <sys/types.h>
 #include <vector>
 #include <string>
-
-/**
- * bloque de capa 1
- * este es el bloque base de toda la infraestructura
- */
+#include "../Algoritm/Cursors.hpp"
+/*
+* bloque de capa 
+* bloque base de toda la infraestructura
+* Funcion: Hojas
+*/
 
 class BaseShadowdBlock{
-  public:
-    explicit BaseShadowdBlock(int indexVar, AllocBlock& allocVar);
-    bool isFree;
-    size_t freeBytes;
-    size_t writed;
-    std::vector<uint8_t> read();
-    void writeIntern();
-    int writeBlock(std::vector<uint8_t> data);
-    void clearLoteBlock(bool clearData=true);
-    bool removeToLast(int end = 8);
-    std::vector<uint8_t> removeAngGetToLast(int end = 8);
-    std::vector<uint8_t> readTo(size_t start, size_t end);
-    std::vector<uint8_t> readTo(size_t start);
-    size_t next();
-  private:
-    size_t countNext = 8;
-    int index;
-    AllocBlock alloc; // alias de AllocatorBlock
-    void readIntern();
-    long start;
-    long size;
-    uint8_t HEAD;
-    size_t DATA;
-    std::vector<uint8_t> buffer;
-    std::string toString() const;
+    public:
+        explicit BaseShadowdBlock(int indexVar, AllocBlock& allocVar, size_t disk_idVar);
+        bool isFree;
+        size_t freeBytes;
+        size_t writed;
+        std::vector<uint8_t> read();
+        void writeIntern();
+        int writeBlock(std::vector<uint8_t> data);
+        std::vector<uint8_t> readTo(Cursor& start, size_t size);
+        std::vector<uint8_t> readTo(Cursor& start){
+            return readTo(start, 9);
+        }
+    private: 
+        size_t index;
+        AllocBlock& alloc; // alias de AllocatorBlock
+        void readIntern();
+        size_t disk_id;
+        int64_t start;
+        uint64_t size;
+        const int HEAD = 4;
+        size_t DATA;
+        std::vector<uint8_t> buffer;
+        std::string toString() const;
 };
 
 using bSB = BaseShadowdBlock;
 
 struct EntryBaseShadowdBlock{
   size_t pos; //Position in disk
-  bSB block;
+  bSB& block;
   const int layer = 1;
   bool valid;
 };

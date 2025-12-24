@@ -12,8 +12,8 @@ class AllocatorBlocks{
     BlockType get(size_t pos);
     void freeBlock(size_t pos);
     size_t gen();
-    int blockSize = 252;
-    std::string getDiskPath();
+    int blockSize = 283;
+    std::string getDiskPath(size_t disk_id);
     uint64_t max(int layer);
     std::string getBlockName(int layer);
     uint64_t span(int layer);
