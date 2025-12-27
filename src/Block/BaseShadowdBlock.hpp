@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include "../Algoritm/Cursors.hpp"
+#include "InsertsHelpers.hpp"
 /*
 * bloque de capa 
 * bloque base de toda la infraestructura
@@ -25,17 +26,20 @@ class BaseShadowdBlock{
         size_t writed;
         std::vector<uint8_t> read();
         void writeIntern();
-        int writeBlock(std::vector<uint8_t> data);
-        std::vector<uint8_t> readTo(Cursor& start, size_t size);
-        std::vector<uint8_t> readTo(Cursor& start){
-            return readTo(start, 9);
+        InsertResult writeBlock(std::vector<uint8_t> data);
+        std::vector<uint8_t> readTo(Cursor& startPos, size_t size);
+        std::vector<uint8_t> readTo(Cursor& startPos){
+            return readTo(startPos, 9);
         }
+        bool clearLoteBlock();
+        TransitReturn removeTo(TransitOptions& options);
+        TransitReturn insertTo(TransitOptions& options);
     private: 
         size_t index;
         AllocBlock& alloc; // alias de AllocatorBlock
         void readIntern();
         size_t disk_id;
-        int64_t start;
+        uint64_t start;
         uint64_t size;
         const int HEAD = 4;
         size_t DATA;

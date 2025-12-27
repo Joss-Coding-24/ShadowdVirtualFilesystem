@@ -1,3 +1,7 @@
 #pragma once
+#include <cstddef>
 
-struct Cursor{};
+class Cursor{
+    public:
+        size_t getActuallyC1Pos();
+};
