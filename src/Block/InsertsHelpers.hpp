@@ -30,7 +30,8 @@ enum class TransitOption{
     DELETE_POS_BYTES_TO_BEGIN, // usa pos como indicador de cuantos bytes borrar al inicio
     DELETE_POS_BYTES_TO_END, // usa pos como.indicadoe de cusntos bytes borrar al final
     DELETE_POS_DEFAULT, // borrar desde buffer[pos] hasta buffer[pos+8]
-    DELETE_POS_TO_INDICATOR // borar desde buffer[pos] hasta buffer[pos+indicator]
+    DELETE_POS_TO_INDICATOR, // borar desde buffer[pos] hasta buffer[pos+indicator]
+    FINALIZE
 };
 
 enum class TransitStates{
@@ -40,6 +41,7 @@ enum class TransitStates{
     ERROR_1, //Falla menor, casi siempre es falta de bloques a los que propagar la modicacion
     ERROR_2, //Falla media, casi siempre, se intento crear un bloque pero fallo, reintenta 10 veces mas
     ERROR_3, //Falla grave, un bloque corrupto o perdida de datoa 
+    OK
 };
 
 struct InsertResult{

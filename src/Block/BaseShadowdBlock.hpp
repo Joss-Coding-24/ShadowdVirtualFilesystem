@@ -17,6 +17,7 @@
 * bloque base de toda la infraestructura
 * Funcion: Hojas
 */
+struct EntryBaseShadowdBlock;
 
 class BaseShadowdBlock{
     public:
@@ -41,7 +42,7 @@ class BaseShadowdBlock{
         size_t disk_id;
         uint64_t start;
         uint64_t size;
-        const int HEAD = 4;
+        int HEAD = 4;
         size_t DATA;
         std::vector<uint8_t> buffer;
         std::string toString() const;

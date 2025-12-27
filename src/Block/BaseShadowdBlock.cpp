@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
+#include <string>
 #include <vector>
 
 BaseShadowdBlock::BaseShadowdBlock(int indexVar, AllocBlock& allocVar, size_t disk_idVar): 
@@ -27,9 +28,11 @@ void BaseShadowdBlock::writeIntern(){
 
     raf.writeAt(hesder.data(), HEAD, count);
     count += HEAD;
+    raf.fsync();
 
     raf.writeAt(buffer.data(), toWrite, count);
-    
+    raf.fsync();
+
     isFree = (countWrite == 0);
 }
 InsertResult BaseShadowdBlock::writeBlock(std::vector<uint8_t> data){
@@ -87,7 +90,33 @@ std::vector<uint8_t> BaseShadowdBlock::readTo(Cursor& cur, size_t size){
     out.insert(out.end(), buffer.begin() + start, buffer.begin() + end);
     return out;
 }
-void BaseShadowdBlock::readIntern(){}
+void BaseShadowdBlock::readIntern(){
+  buffer.clear();
+  size_t count = start;
+  std::string path = alloc.getDiskPath(disk_id);
+  RandomAccessFile raf(path);
+
+  uint8_t head[HEAD];
+  raf.readAt(head, HEAD, count);
+  count += HEAD;
+  std::vector<uint8_t> headBytes;
+  headBytes.insert(headBytes.end(), head, head+HEAD);
+
+  writed = beToSize(headBytes, HEAD);
+  if(writed>DATA) writed = DATA;
+  if(writed > 0) {
+    freeBytes = DATA - writed;
+    isFree = false;
+  }else {
+    freeBytes = DATA;
+    isFree = true;
+  }
+
+  std::vector < uint8_t > buff(writed);
+  raf.readAt(buff.data(), writed, count);
+
+  buffer.insert(buffer.end(), buff.begin(), buff.end());
+}
 TransitReturn removeBegin(Cursor& cur, std::vector<uint8_t>& buffer, bool incrementSize){
     size_t pos = cur.getActuallyC1Pos() ;
     if( pos == 0) return {.estado = TransitStates::ERROR_1};
@@ -125,7 +154,7 @@ TransitReturn removeEnd(Cursor& cur, std::vector<uint8_t>& buffer, bool incremen
         incrementSize
     };    
 }
-TransitReturn removeInRange(Cursor& cur, size_t ind, std::vector<uint8_t> buffer, bool incrementSize){
+TransitReturn removeInRange(Cursor& cur, size_t ind, std::vector<uint8_t>& buffer, bool incrementSize){
     size_t pos = cur.getActuallyC1Pos();
     size_t finish = pos + ind;
     std::vector<uint8_t> data;
@@ -154,5 +183,103 @@ TransitReturn BaseShadowdBlock::removeTo(TransitOptions& options){
         default: return {.estado = TransitStates::IGNORE};
     }
 }
-TransitReturn insertTo(TransitOptions& options){}
-std::string BaseShadowdBlock::toString() const{}
+TransitReturn insertBegin(std::vector<uint8_t>& buffer, std::vector<uint8_t> data, bool incrementSize, size_t blockSize){
+    if(buffer.size()+data.size() > blockSize && !incrementSize) {
+        return {.estado = TransitStates::ERROR_1};
+    }
+    buffer.insert(buffer.begin(), data.begin(), data.end());
+    if(incrementSize){
+        if(buffer.size() > blockSize){
+            std::vector<uint8_t> datas;
+            datas.insert(datas.begin(), buffer.begin()+blockSize, buffer.end());
+            buffer.erase(buffer.begin()+ blockSize, buffer.end());
+            return {
+                TransitOption::INSERT_BEGIN,
+                TransitStates::MOVE_TO_END,
+                datas,
+                true
+            };
+        }
+    }
+    return {
+        TransitOption::FINALIZE,
+        TransitStates::OK
+    };
+}
+TransitReturn insertEnd(std::vector<uint8_t>& buffer, std::vector<uint8_t> data, bool incrementSize, size_t blockSize) {
+    if(buffer.size() == blockSize) return{
+        TransitOption::INSERT_BEGIN,
+        TransitStates::MOVE_TO_END,
+        data,
+        true // debe de mover bytes, no puede ser false
+    }; //si el bloque esta lleno entonces que lo inserte al inicio del siguiente
+    if(buffer.size()+data.size() > blockSize && !incrementSize) {
+        return {.estado = TransitStates::ERROR_1};
+    }
+    buffer.insert(buffer.end(), data.begin(), data.end());
+    if(incrementSize){
+        if(buffer.size() > blockSize){
+            std::vector<uint8_t> datas;
+            datas.insert(datas.begin(), buffer.begin()+blockSize, buffer.end());
+            buffer.erase(buffer.begin()+ blockSize, buffer.end());
+            return {
+                TransitOption::INSERT_BEGIN,
+                TransitStates::MOVE_TO_END,
+                datas,
+                true
+            };
+        }
+    }
+    return {
+        TransitOption::FINALIZE,
+        TransitStates::OK
+    };
+}
+TransitReturn insertInPos(std::vector<uint8_t>& buffer, std::vector<uint8_t> data, bool incrementSize, size_t blockSize, size_t pos) {
+    if(buffer.size()+data.size() > blockSize && !incrementSize) {
+        return {.estado = TransitStates::ERROR_1};
+    }
+    buffer.insert(buffer.begin()+pos, data.begin(), data.end());
+    if(incrementSize){
+        if(buffer.size() > blockSize){
+            std::vector<uint8_t> datas;
+            datas.insert(datas.begin(), buffer.begin()+blockSize, buffer.end());
+            buffer.erase(buffer.begin()+ blockSize, buffer.end());
+            return {
+                TransitOption::INSERT_BEGIN,
+                TransitStates::MOVE_TO_END,
+                datas,
+                true
+            };
+        }
+    }
+    return {
+        TransitOption::FINALIZE,
+        TransitStates::OK
+    };
+}
+TransitReturn BaseShadowdBlock::insertTo(TransitOptions& options){
+    TransitOption op = options.option;
+    switch (op) {
+        case TransitOption::INSERT_BEGIN: return insertBegin(buffer, options.data, options.incrementSize, DATA);
+        case TransitOption::INSERT_END: return insertEnd(buffer, options.data, options.incrementSize, DATA);
+        case TransitOption::INSERT_IN_POS: return insertInPos(buffer, options.data, options.incrementSize, DATA, options.pos.getActuallyC1Pos());
+        default: return {.estado=TransitStates::IGNORE};
+    }
+}
+std::string BaseShadowdBlock::toString() const{
+    std::ostringstream oss;
+
+    auto makeTabs = [&](int n){
+        return std::string(n, '\t');
+    };
+  
+    oss << makeTabs(9) << "BaseShadowdBlock(\n";
+    oss << makeTabs(10) << "index=" << index << '\n';
+    oss << makeTabs(10) << "start=" << start << '\n';
+    oss << makeTabs(10) << "writed=" << writed << '\n';
+    oss << makeTabs(10) << "free=" << freeBytes << '\n';
+    oss << makeTabs(9) << ")" << '\n';
+
+    return oss.str();
+}
