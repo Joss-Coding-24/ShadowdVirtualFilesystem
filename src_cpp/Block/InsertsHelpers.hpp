@@ -14,7 +14,8 @@
 enum class InsertResultItem{
     BUFFER_IS_FULL, //buffer lleno
     INSERTED_WHITHOUT_REMAINING, // todo de inserto completamente
-    INSERTED_WHITH_REMAINING // sobraron bytes 
+    INSERTED_WHITH_REMAINING, // sobraron bytes 
+    FAILL
 };
 
 enum class BufferStates{
@@ -44,6 +45,14 @@ enum class TransitStates{
     OK
 };
 
+enum class LayerState{
+    OBTAINED, //layer obtenida
+    LOADED, // layer cargada
+    GENERATED, // layer generada
+    NOT_SPACE, // el disco esta lleno
+    OUT_OF_RANGE //se salio del rango de un disco
+};
+
 struct InsertResult{
     InsertResultItem result;
     BufferStates state;
@@ -64,4 +73,10 @@ struct TransitReturn{
     TransitStates estado;
     std::vector<uint8_t> data;
     bool incrementSize;
+};
+
+template <typename block> 
+struct LayerResult{
+    LayerState state;
+    block result;
 };

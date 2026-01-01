@@ -7,6 +7,9 @@
 #include <vector>
 #include "../Helpers/BigEndianCover.hpp"
 
+const int ptr_size = 11; // 9 bytes para un puntero
+const int nic_size = 95; // 37 bytes para rl nombre 
+
 class BTreeData{
     public:
         explicit BTreeData(size_t posVar, Alloc& alloc) :

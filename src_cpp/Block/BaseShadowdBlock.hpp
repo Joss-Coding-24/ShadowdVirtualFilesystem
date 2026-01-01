@@ -54,7 +54,7 @@ struct EntryBaseShadowdBlock{
   size_t pos; //Position in disk
   bSB& block;
   const int layer = 1;
-  bool valid;
+  bool valid = false;
 };
 
 using EbSB = EntryBaseShadowdBlock;
