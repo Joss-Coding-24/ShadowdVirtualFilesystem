@@ -1,3 +1,7 @@
+pub mod block;
+pub mod algoritm;
+pub mod helpers;
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }

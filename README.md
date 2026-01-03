@@ -1,4 +1,4 @@
-# Shadowd Native Filesystem Modul
+# Shadowd Native Filesystem Modular
 Este módulo nativo implementa el sistema de archivos interno del proyecto Shadowd, una base de datos diseñada para escalar a volúmenes extremadamente grandes mediante una arquitectura jerárquica de múltiples capas. El diseño se basa en bloques pequeños y altamente encadenados que permiten alcanzar capacidades de archivo y de disco masivas 
 
 # Arquitectura del sistema
@@ -20,7 +20,13 @@ El módulo representa y gestiona el sistema de archivos interno de Shadowd, incl
   - Fundamento estructural para el motor de datos de gran escala
   
   # Estructura del proyecto
-    src/
+    src/ (new code)
+      Block/
+        mod.rs
+        AllocatorBlocks.rs
+        BaseShadowdBlock.rs
+    
+    src_cpp/ (old code)
       Algoritm/
         Btree.cpp
         BtreeData.hpp
