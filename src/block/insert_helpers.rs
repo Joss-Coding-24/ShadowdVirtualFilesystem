@@ -57,12 +57,12 @@ pub enum LayerState {
 }
 
 #[derive(Debug)]
-pub struct InsertResult {
+pub struct InsertResult{
     pub result: InsertResultItem,
     pub state: BufferStates,
     pub remaining: usize,
     pub written: usize,
-    pub remaining_bytes: Vec<u8>
+    pub remaining_bytes:Vec<u8>
 }
 
 #[derive(Debug)]
@@ -71,7 +71,7 @@ pub struct TransitOptions<'a> {
     pub pos: &'a mut Cursor,
     pub indicator: usize,
     pub increment_size: bool, // false para no insertar si supera la capacidad de capas
-    pub data: Vec<u8>,
+    pub data:&'a mut Vec<u8>,
 }
 
 #[derive(Debug)]

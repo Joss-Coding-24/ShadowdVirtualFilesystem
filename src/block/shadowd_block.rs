@@ -26,7 +26,7 @@ pub trait Block <'a> {
 
     fn new(pos:u64, alloc:&'a mut AllocatorBlock, disk_id:usize)->Self;
     fn write_intern(&mut self);
-    fn write_block(&self, cur:&Cursor, data:&mut Vec<u8>)->InsertResult;
+    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>)->InsertResult;
     fn read_to(&self, cur:&Cursor, size:usize)->&[u8];
     fn clear_block_childs(&self)->bool;
     fn remove_to(&self, options:&TransitOptions)->TransitReturn;
