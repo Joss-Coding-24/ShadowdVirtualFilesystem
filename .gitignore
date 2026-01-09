@@ -1,4 +1,6 @@
+.gitignore
 .clangd
 Cargo.lock
 target/
 Test/
+stress/
