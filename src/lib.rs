@@ -8,8 +8,14 @@ pub fn add(left: u64, right: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::algoritm::cursors::Cursor;
+    use crate::block::shadowd_block::{Block, ShadowdBlockCore};
+    use crate::block::allocator_block::AllocatorBlock;
+    use crate::block::base_sheet_shadowd_block::BaseSheetShadowdBlock;
     use crate::helpers::random_access_file::RandomAccessFile;
+    use std::cell::RefCell;
     use std::fs;
+    use std::rc::Rc;
     use std::time::Instant;
 
     const BLOCKS: usize = 50_000;      // cantidad de escrituras
@@ -60,7 +66,32 @@ mod tests {
     }
 
     #[test]
-    fn gen_test(){
+    fn block_test(){
+        let alloc = AllocatorBlock::new("Test");
+        let alloc = Rc::new(RefCell::new(alloc));
+        let mut block = BaseSheetShadowdBlock::new(
+            0, 
+            alloc, 
+            0
+        );
+        let data_1 = "Un BaseSheetShadowdBlock es encencia el pilar de toda la infraestructura shadowd. ";
+        let data_2 = "En si, un BSSB es solo un bloque que interactua con datos reales y con los datos de";
+        let data_3 = "los demas bloques.";
+
+        let mut data_1_v = Vec::new();
+        data_1_v.extend_from_slice(data_1.as_bytes());
+        let mut data_2_v = Vec::new();
+        data_2_v.extend_from_slice(data_2.as_bytes());
+        let mut data_3_v = Vec::new();
+        data_3_v.extend_from_slice(data_3.as_bytes());
+
+        let cur = Cursor::new(); // creamos un cursor apuntando a init
+
+        assert_eq!(block.writed_bytes(), 0, "el bloque deberia de estar vacio");
         
+        let result_1 = block.write_block(&cur, &mut data_1_v);
+        assert!(result_1.is_some(), "algo fallo en escritura");
+        let result_wb_1 = block.write_intern();
+        assert!(result_wb_1.is_some(), "algo fallo en persistencia");
     }
 }

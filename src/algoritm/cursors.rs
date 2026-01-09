@@ -10,6 +10,13 @@ struct CursorCore{
     type_:u8,
 }
 impl CursorCore {
+    fn new(type_:u8)->Self{
+        Self{
+            type_: type_,
+            disk: 0,
+            pos: 0,
+        }
+    }
     fn charge(v: &mut Vec<u8>) -> Option<Self> {
         if v.len() < 8 {
             return None;
@@ -50,6 +57,11 @@ struct Cursor1{
     core:CursorCore,
 }
 impl Cursor1 {
+    fn new(type_:u8) -> Self{
+        Self{
+            core: CursorCore::new(type_),
+        }
+    }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
         let core = CursorCore::charge(v)?;
         Some(
@@ -69,6 +81,12 @@ struct Cursor2{
     cur1:Cursor1,
 }
 impl Cursor2 {
+    fn new(type_:u8) -> Self{
+        Self{
+            core:CursorCore::new(1),
+            cur1: Cursor1::new(type_),
+        }
+    }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
         let core = CursorCore::charge(v)?;
         let cur = Cursor1::charge(v)?;
@@ -90,6 +108,12 @@ struct Cursor3{
     cur2:Cursor2,
 }
 impl Cursor3 {
+    fn new(type_:u8)->Self{
+        Self { 
+            core: CursorCore::new(2), 
+            cur2: Cursor2::new(type_)
+        }
+    }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
         let core = CursorCore::charge(v)?;
         let cur = Cursor2::charge(v)?;
@@ -111,6 +135,12 @@ struct Cursor4{
     cur3:Cursor3,
 }
 impl Cursor4 {
+    fn new (type_:u8)->Self{
+        Self { 
+            core: CursorCore::new(3), 
+            cur3: Cursor3::new(type_) 
+        }
+    }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
         let core = CursorCore::charge(v)?;
         let cur = Cursor3::charge(v)?;
@@ -133,6 +163,12 @@ struct Cursor5{
     cur4:Cursor4,
 }
 impl Cursor5 {
+    fn new(type_:u8)->Self{
+        Self { 
+            core: CursorCore::new(4), 
+            cur4: Cursor4::new(type_)
+        }
+    }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
         let core = CursorCore::charge(v)?;
         let cur = Cursor4::charge(v)?;
@@ -159,7 +195,18 @@ pub struct Cursor{
     layer:u8,
 }
 impl Cursor {
-    pub fn new(v:&mut Vec<u8>)->Option<Self>{
+    pub fn new()->Self{
+        Self { 
+            cur6: Cursor1::new(5), 
+            cur5: Cursor5::new(4), 
+            cur4: Cursor4::new(3),
+            cur3: Cursor3::new(2), 
+            cur2: Cursor2::new(1), 
+            cur1: Cursor1::new(1), 
+            layer: 6
+        }
+    }
+    pub fn charge(v:&mut Vec<u8>)->Option<Self>{
         let _6 = Cursor1::charge(v)?;
         let _5 = Cursor5::charge(v)?;
         let _4 = Cursor4::charge(v)?;

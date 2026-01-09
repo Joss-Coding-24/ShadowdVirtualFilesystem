@@ -1,8 +1,8 @@
 use std::{
-    i64, u8, usize
+    cell::RefCell, i64, path::{Path, PathBuf}, rc::Rc, u8, usize
 };
 
-use crate::block::{base_sheet_shadowd_block::BaseSheetShadowdBlock, disk_helper::DiskHelper, shadowd_block::Block};
+use crate::block::{AllocHadle, base_sheet_shadowd_block::BaseSheetShadowdBlock, disk_helper::DiskHelper, shadowd_block::Block};
 struct DiskHelperManage {
     fragments: [Option<DiskHelper>; 4],
 }
@@ -16,37 +16,38 @@ impl DiskHelperManage {
         &mut self,
         disk: usize,
         frag: u64,
-        dir:&str
+        dir:PathBuf
     ) -> Option<&mut DiskHelper> {
         let idx = frag_index(frag)?;
 
         if self.fragments[idx].is_none() {
-            let name = format!("{}/{}.disk{}", dir, disk, frag);
-            self.fragments[idx] = Some(DiskHelper::new(&name)?);
+            let mut path = dir.clone();
+            path.push(format!("{}.disk{}", disk, frag));
+            self.fragments[idx] = Some(DiskHelper::new(&path)?);
         }
 
         self.fragments[idx].as_mut()
     }
 
 }
-pub struct AllocatorBlock<'a>{
+pub struct AllocatorBlock{
     helpers:Vec<DiskHelperManage>,
-    dir:&'a str
+    dir:PathBuf
 }
 
-impl AllocatorBlock<'_>{
-    pub fn new(dir:&'_ str) -> AllocatorBlock<'_>{
+impl AllocatorBlock{
+    pub fn new(dir:impl AsRef<Path>) -> Self{
         AllocatorBlock {
             helpers: (0..u16::MAX).map(|_| DiskHelperManage::new()).collect(),
-            dir:dir
+            dir:dir.as_ref().to_path_buf()
         }
     }
 
-    pub fn get_bssb(&mut self, pos:u64, disk_id:usize)->BaseSheetShadowdBlock<'_>{
-        BaseSheetShadowdBlock::new(pos, self, disk_id)
+    pub fn get_bssb(self, pos:u64, disk_id:usize)->BaseSheetShadowdBlock{
+        BaseSheetShadowdBlock::new(pos, Rc::new(RefCell::new(self)), disk_id)
     }
     pub fn get_size_block()->usize{
-        todo!("get size sin imolementar")
+        341
     }
     pub fn write_disk(
         &mut self,
@@ -60,9 +61,9 @@ impl AllocatorBlock<'_>{
 
         let helper = self.helpers
             .get_mut(disk_id as usize)?
-            .get_or_create(disk_id as usize, frag, self.dir)?;
+            .get_or_create(disk_id as usize, frag, self.dir.clone())?;
 
-        helper.write_at(data, inner_off as u64);
+        helper.write_at(data, inner_off as u64)?;
         Some(())
     }
     pub fn read_disk(
@@ -77,7 +78,7 @@ impl AllocatorBlock<'_>{
 
         let helper = self.helpers
             .get_mut(disk_id as usize)?
-            .get_or_create(disk_id as usize, frag, self.dir)?;
+            .get_or_create(disk_id as usize, frag, self.dir.clone())?;
 
         Some(helper.read_at(count, inner_off as u64)?)
     }

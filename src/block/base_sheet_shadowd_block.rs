@@ -1,8 +1,7 @@
 use crate::{
     algoritm::cursors::Cursor, 
     block::{
-        allocator_block::AllocatorBlock,
-        insert_helpers::{
+        AllocHadle, allocator_block::AllocatorBlock, insert_helpers::{
             BufferStates, 
             InsertResult, 
             InsertResultItem, 
@@ -16,15 +15,18 @@ use crate::{
             ShadowdBlockCore
         }
     }, 
-    helpers::convertions::{be_to_size, size_to_be}
+    helpers::convertions::{
+        be_to_size, 
+        size_to_be
+    }
 };
 use std::{
     fmt,
     mem::take
 };
 
-pub struct BaseSheetShadowdBlock<'a>{
-    _core:ShadowdBlockCore<'a>,
+pub struct BaseSheetShadowdBlock{
+    _core:ShadowdBlockCore,
     _buffer:Vec<u8>,
     is_free:bool,
     writed_bytes:usize,
@@ -36,10 +38,10 @@ pub struct BaseSheetShadowdBlock<'a>{
 }
 
 //la politica de general de bloque
-impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
+impl Block for BaseSheetShadowdBlock {
     type Buffer = Vec<u8>;
 
-    fn new(pos:u64, alloc:&'a mut AllocatorBlock, disk_id:usize)->Self {
+    fn new(pos:u64, alloc:AllocHadle, disk_id:usize)->Self {
         Self {
             _core:
                 ShadowdBlockCore{
@@ -66,37 +68,32 @@ impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
                 AllocatorBlock::get_size_block()-4
         }
     }
-    fn write_intern(&mut self) {
-        if self._buffer.is_empty() {self.read_intern();}
-        let buffer_size = self._buffer.len();
-        let to_write = if buffer_size < self._data{buffer_size}else{self._data};
+    fn write_intern(&mut self) -> Option<()>{
+        if self._buffer.is_empty() {self.read_intern()?;}
         let mut count = self._start;
 
         let count_writed = self.writed_bytes.min(self._data);
         let header_bytes = size_to_be(count_writed, self._head_size as usize);
-        let alloc:&mut AllocatorBlock =  self._core.alloc;
-        let result = &alloc.write_disk(&header_bytes, count, self._core.disk_id as u16);
-        if result.is_none() {
-            return
-        }
+        self._core.alloc.borrow_mut().write_disk(&header_bytes, count, self._core.disk_id as u16)?;
         count += self._head_size as u64;
 
         let data_bytes= &mut self._buffer;
-        data_bytes.resize(to_write, 0);
-        alloc.write_disk(data_bytes, count, self._core.disk_id as u16);
-        return
+        self._core.alloc.borrow_mut().write_disk(data_bytes, count, self._core.disk_id as u16)?;
+        Some(())
     }
-    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>) -> InsertResult{
-        if self._buffer.is_empty() {self.read_intern();}
+    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>) -> Option<InsertResult>{
+        if self._buffer.is_empty() {self.read_intern()?;}
         let _sym = cur;// simulamos un uso
         if self.free_bytes == 0 {
-            return InsertResult {
-                result: InsertResultItem::BufferIsFull,
-                state: BufferStates::Full,
-                remaining: data.len(),
-                written: 0,
-                remaining_bytes: take(data),
-            };
+            return Some(
+                InsertResult {
+                    result: InsertResultItem::BufferIsFull,
+                    state: BufferStates::Full,
+                    remaining: data.len(),
+                    written: 0,
+                    remaining_bytes: take(data),
+                }
+            );
         }
         let original_data_size = data.len();
         let remaning = self.free_bytes;
@@ -154,11 +151,11 @@ impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
             InsertResultItem::InsertedWithRemaining
         };
 
-        result
+        Some(result)
     }
     fn read_to(&mut self, cur:&Cursor, size:usize) -> Option<&[u8]> {
         if self._buffer.is_empty() {
-            self.read_intern();
+            self.read_intern()?;
         }
 
         let offset = cur.get_pos(1)? as usize * 11;
@@ -176,7 +173,7 @@ impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
     }
     fn insert_to(&mut self, options:&TransitOptions)->Option<TransitReturn> {
         if self._buffer.is_empty() {
-            self.read_intern();
+            self.read_intern()?;
         }
         let is_dir = options.context.is_directory();
         if is_dir { 
@@ -251,7 +248,7 @@ impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
     }
     fn remove_to(&mut self, options:&TransitOptions)->Option<TransitReturn> {
         if self._buffer.is_empty() {
-            self.read_intern();
+            self.read_intern()?;
         }
         let is_dir = options.context.is_directory();
         if is_dir {
@@ -312,7 +309,7 @@ impl <'a> Block<'a> for BaseSheetShadowdBlock<'a> {
 }
 
 //la politica interna del bloque 
-impl BaseSheetShadowdBlock<'_> {
+impl BaseSheetShadowdBlock{
     pub fn layer()->u8{
         1
     }
@@ -327,8 +324,15 @@ impl BaseSheetShadowdBlock<'_> {
     }
     fn read_intern(&mut self) -> Option<()>{
         let mut count = self._start;
-        let head = self._core.alloc.read_disk(self._head_size as usize, count, self._core.disk_id as u16)?;
+        let head = self._core.alloc.borrow_mut().read_disk(self._head_size as usize, count, self._core.disk_id as u16)?;
         count += self._head_size as u64;
+
+        if head.is_empty() {
+            self.writed_bytes = 0;
+            self.free_bytes = self._data;
+            self.is_free = true;
+            return Some(());
+        }
 
         let writed = be_to_size(&head, self._head_size as usize);
         let to_read = writed.min(self._data);
@@ -340,12 +344,12 @@ impl BaseSheetShadowdBlock<'_> {
             self.free_bytes = self._data;
             self.is_free = true;
         }
-        let mut data = self._core.alloc.read_disk(to_read, count, self._core.disk_id as u16)?;
+        let mut data = self._core.alloc.borrow_mut().read_disk(to_read, count, self._core.disk_id as u16)?;
         self._buffer.splice(.., data.drain(..));
         Some(())
     }
 }
-impl fmt::Display for BaseSheetShadowdBlock<'_> {
+impl fmt::Display for BaseSheetShadowdBlock{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let make_tabs = |n: usize| "\t".repeat(n);
 
@@ -535,8 +539,8 @@ fn delete_in_range(pos:usize, ind:usize, buff: &mut Vec<u8>, decrement:bool)->Tr
         context: TransportContext::File
     }
 }
-pub struct EntrySheetShadowdBlock<'a>{
+pub struct EntrySheetShadowdBlock{
     pos:usize,
-    bs_sb:BaseSheetShadowdBlock<'a>,
+    bs_sb:BaseSheetShadowdBlock,
     valid:bool,
 }

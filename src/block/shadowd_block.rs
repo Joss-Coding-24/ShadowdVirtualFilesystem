@@ -6,7 +6,7 @@ use std::{
 use crate::{
     algoritm::cursors::Cursor, 
     block::{
-        allocator_block::AllocatorBlock, 
+        AllocHadle, 
         insert_helpers::{
             InsertResult, 
             TransitOptions, 
@@ -15,18 +15,18 @@ use crate::{
     }
 };
 
-pub struct ShadowdBlockCore<'a> {
+pub struct ShadowdBlockCore {
     pub pos: u64,
     pub disk_id: usize,
-    pub alloc: &'a mut AllocatorBlock,
+    pub alloc: AllocHadle,
 }
 
-pub trait Block <'a> {
+pub trait Block{
     type Buffer;
 
-    fn new(pos:u64, alloc:&'a mut AllocatorBlock, disk_id:usize)->Self;
-    fn write_intern(&mut self);
-    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>)->InsertResult;
+    fn new(pos:u64, alloc:AllocHadle, disk_id:usize)->Self;
+    fn write_intern(&mut self) -> Option<()>;
+    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>)->Option<InsertResult>;
     fn read_to(&mut self, cur:&Cursor, size:usize)-> Option<&[u8]>;
     fn clear_block_childs(&mut self)->bool;
     fn remove_to(&mut self, options:&TransitOptions)->Option<TransitReturn>;

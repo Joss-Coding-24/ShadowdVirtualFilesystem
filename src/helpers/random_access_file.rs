@@ -17,8 +17,8 @@ pub struct RandomAccessFile {
 }
 
 impl RandomAccessFile {
-    pub fn new(path_str: &str) -> io::Result<Self> {
-        let path = Path::new(path_str);
+    pub fn new(path_: impl AsRef<Path>) -> io::Result<Self> {
+        let path = Path::new(path_.as_ref().as_os_str());
         ensure_parent_dir(path)?;
         Ok(Self {
             file: Arc::new(
@@ -48,10 +48,7 @@ impl RandomAccessFile {
     pub fn read_at(&self, count: usize, offset: u64) -> io::Result<Vec<u8>> {
         let size = self.size()?;
         if offset + count as u64 > size {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "lectura fuera de rango",
-            ));
+            return Ok(Vec::new())
         }
 
         let mut buf = vec![0u8; count];
