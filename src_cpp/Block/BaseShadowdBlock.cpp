@@ -82,7 +82,7 @@ bool BaseShadowdBlock::clearLoteBlock(){
 }
 std::vector<uint8_t> BaseShadowdBlock::readTo(Cursor& cur, size_t size){
     std::vector<uint8_t> out;
-    size_t start = cur.getActuallyC1Pos();
+    size_t start = cur.getActuallyCnPos();
     size_t end = start + size;
 
     if(end > buffer.size()) return out;
@@ -267,19 +267,19 @@ TransitReturn BaseShadowdBlock::insertTo(TransitOptions& options){
         default: return {.estado=TransitStates::IGNORE};
     }
 }
-std::string BaseShadowdBlock::toString() const{
-    std::ostringstream oss;
-
-    auto makeTabs = [&](int n){
-        return std::string(n, '\t');
-    };
+std::string BaseShadowdBlock::toString() const{  
+    std::ostringstream oss;  
   
-    oss << makeTabs(9) << "BaseShadowdBlock(\n";
-    oss << makeTabs(10) << "index=" << index << '\n';
-    oss << makeTabs(10) << "start=" << start << '\n';
-    oss << makeTabs(10) << "writed=" << writed << '\n';
-    oss << makeTabs(10) << "free=" << freeBytes << '\n';
-    oss << makeTabs(9) << ")" << '\n';
-
-    return oss.str();
+    auto makeTabs = [&](int n){  
+        return std::string(n, '\t');  
+    };  
+    
+    oss << makeTabs(9) << "BaseShadowdBlock(\n";  
+    oss << makeTabs(10) << "index=" << index << '\n';  
+    oss << makeTabs(10) << "start=" << start << '\n';  
+    oss << makeTabs(10) << "writed=" << writed << '\n';  
+    oss << makeTabs(10) << "free=" << freeBytes << '\n';  
+    oss << makeTabs(9) << ")" << '\n';  
+  
+    return oss.str();  
 }

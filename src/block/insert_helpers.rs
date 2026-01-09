@@ -6,9 +6,20 @@
 use std::vec::Vec;
 use std::usize;
 
-// Asumiendo que Cursor existe en algún módulo
 use crate::algoritm::cursors::Cursor;
 
+#[derive(Debug)]
+pub enum TransportContext{
+    File,
+    Directory
+}
+
+impl TransportContext {
+    #[must_use]
+    pub fn is_directory(&self) -> bool {
+        matches!(self, Self::Directory)
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InsertResultItem {
     BufferIsFull,              // buffer lleno
@@ -45,6 +56,7 @@ pub enum TransitStates {
     Error2,        // falla media (fallo al crear bloque, reintentar)
     Error3,        // falla grave (bloque corrupto o pérdida de datos)
     Ok,
+    IlegalAcction, // intento de hacer algo ilegal
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,7 +74,7 @@ pub struct InsertResult{
     pub state: BufferStates,
     pub remaining: usize,
     pub written: usize,
-    pub remaining_bytes:Vec<u8>
+    pub remaining_bytes:Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -72,14 +84,17 @@ pub struct TransitOptions<'a> {
     pub indicator: usize,
     pub increment_size: bool, // false para no insertar si supera la capacidad de capas
     pub data:&'a mut Vec<u8>,
+    pub context:TransportContext,
 }
 
 #[derive(Debug)]
 pub struct TransitReturn {
     pub action: TransitOption,
     pub state: TransitStates,
-    pub data: Vec<u8>,
+    pub data:Vec<u8>,
     pub increment_size: bool,
+    pub context:TransportContext,
+    
 }
 
 #[derive(Debug)]

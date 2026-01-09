@@ -5,16 +5,17 @@ pub struct DiskHelper{
 }
 
 impl DiskHelper{
-    pub fn new(disk:&str)->Self{
-        DiskHelper{
-            raf:
-                RandomAccessFile::new(disk)
-        }
+    pub fn new(disk:&str)->Option<Self>{
+        let raf = RandomAccessFile::new(disk).ok()?;
+        Some(DiskHelper{
+            raf: raf
+                
+        })
     }
-    pub fn write_at(&self, data:&[u8], count:usize, offset:i64){
-        self.raf.write_at(data, count, offset);
+    pub fn write_at(&self, data:&[u8], offset:u64){
+        self.raf.write_at(data, offset);
     }
-    pub fn read_at(&self, count:usize, offset:i64) -> Vec<u8>{
-        self.raf.read_at(count, offset)
+    pub fn read_at(&self, count:usize, offset:u64) -> Option<Vec<u8>>{
+        Some(self.raf.read_at(count, offset).ok()?)
     }
 }

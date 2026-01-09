@@ -1,5 +1,5 @@
 [package]
-name = "ShadowdVirtualFilesystem"
+name = "shadowd_virtual_filesystem"
 version = "0.1.0"
 edition = "2024"
 

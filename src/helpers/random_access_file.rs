@@ -1,14 +1,15 @@
 use std::{
     fs::{
+        self, 
         File, 
         OpenOptions
-    },
+    }, 
     io::{
-        self, 
-        Read
+        self
     },
-    os::unix::fs::FileExt,
-    sync::Arc,
+    os::unix::fs::FileExt, 
+    path::Path, 
+    sync::Arc
 };
 
 pub struct RandomAccessFile {
@@ -16,7 +17,9 @@ pub struct RandomAccessFile {
 }
 
 impl RandomAccessFile {
-    pub fn new(path: &str) -> io::Result<Self> {
+    pub fn new(path_str: &str) -> io::Result<Self> {
+        let path = Path::new(path_str);
+        ensure_parent_dir(path)?;
         Ok(Self {
             file: Arc::new(
                 OpenOptions::new()
@@ -43,9 +46,16 @@ impl RandomAccessFile {
     }
 
     pub fn read_at(&self, count: usize, offset: u64) -> io::Result<Vec<u8>> {
+        let size = self.size()?;
+        if offset + count as u64 > size {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "lectura fuera de rango",
+            ));
+        }
+
         let mut buf = vec![0u8; count];
         let mut read = 0;
-        if self.size()?<count as u64 {return Ok(buf)}//se que no deberia de hacer esto, pero es un por ai acaso
 
         while read < count {
             let n = self.file.read_at(
@@ -53,12 +63,14 @@ impl RandomAccessFile {
                 offset + read as u64,
             )?;
             if n == 0 {
-                break;
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "lectura incompleta",
+                ));
             }
             read += n;
         }
 
-        buf.truncate(read);
         Ok(buf)
     }
 
@@ -69,4 +81,13 @@ impl RandomAccessFile {
     pub fn fsync(&self) -> io::Result<()> {
         self.file.sync_all()
     }
+}
+
+fn ensure_parent_dir(path: &Path) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    Ok(())
 }
