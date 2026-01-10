@@ -41,10 +41,11 @@ pub struct BaseSheetShadowdBlock{
 impl Block for BaseSheetShadowdBlock {
     type Buffer = Vec<u8>;
 
-    fn new(pos:u64, alloc:AllocHadle, disk_id:usize)->Self {
+    fn new(pos:u64, alloc:AllocHadle, disk_id:usize, layer:u8)->Self {
         Self {
             _core:
                 ShadowdBlockCore{
+                    layer,
                     pos, 
                     disk_id, 
                     alloc
@@ -69,7 +70,8 @@ impl Block for BaseSheetShadowdBlock {
         }
     }
     fn write_intern(&mut self) -> Option<()>{
-        if self._buffer.is_empty() {self.read_intern()?;}
+        //inconcientemente aplique que un bloque no inicializado tenga freebytes mayor a data
+        if self.free_bytes > self._data {self.read_intern()?;}
         let mut count = self._start;
 
         let count_writed = self.writed_bytes.min(self._data);
@@ -77,12 +79,13 @@ impl Block for BaseSheetShadowdBlock {
         self._core.alloc.borrow_mut().write_disk(&header_bytes, count, self._core.disk_id as u16)?;
         count += self._head_size as u64;
 
-        let data_bytes= &mut self._buffer;
-        self._core.alloc.borrow_mut().write_disk(data_bytes, count, self._core.disk_id as u16)?;
+        let mut data_bytes= self._buffer.clone();// ofuscar destruye el vector pasado, no arriesgar a destruir los datos del bloque
+        let data = self.ofusc(&mut data_bytes);
+        self._core.alloc.borrow_mut().write_disk(&data, count, self._core.disk_id as u16)?;
         Some(())
     }
     fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>) -> Option<InsertResult>{
-        if self._buffer.is_empty() {self.read_intern()?;}
+        if self.free_bytes > self._data {self.read_intern()?;}
         let _sym = cur;// simulamos un uso
         if self.free_bytes == 0 {
             return Some(
@@ -154,7 +157,7 @@ impl Block for BaseSheetShadowdBlock {
         Some(result)
     }
     fn read_to(&mut self, cur:&Cursor, size:usize) -> Option<&[u8]> {
-        if self._buffer.is_empty() {
+        if self.free_bytes > self._data {
             self.read_intern()?;
         }
 
@@ -163,7 +166,7 @@ impl Block for BaseSheetShadowdBlock {
         Some(&self._buffer[offset..end])
     }
     fn clear_block_childs(&mut self)->bool {
-        if self._buffer.is_empty() {self.read_intern();}
+        if self.free_bytes > self._data {self.read_intern();}
         self._buffer.fill(0);
         self.write_intern();
         self.writed_bytes = 0;
@@ -172,7 +175,7 @@ impl Block for BaseSheetShadowdBlock {
         true
     }
     fn insert_to(&mut self, options:&TransitOptions)->Option<TransitReturn> {
-        if self._buffer.is_empty() {
+        if self.free_bytes > self._data {
             self.read_intern()?;
         }
         let is_dir = options.context.is_directory();
@@ -206,7 +209,7 @@ impl Block for BaseSheetShadowdBlock {
                     TransitReturn {
                         action: TransitOption::Finalize,
                         state: TransitStates::Ok, 
-                        data: Vec::new(), 
+                        data: Vec::new(),
                         increment_size: options.increment_size, 
                         context: TransportContext::Directory
                     }
@@ -247,7 +250,7 @@ impl Block for BaseSheetShadowdBlock {
         }
     }
     fn remove_to(&mut self, options:&TransitOptions)->Option<TransitReturn> {
-        if self._buffer.is_empty() {
+        if self.free_bytes > self._data {
             self.read_intern()?;
         }
         let is_dir = options.context.is_directory();
@@ -344,9 +347,29 @@ impl BaseSheetShadowdBlock{
             self.free_bytes = self._data;
             self.is_free = true;
         }
-        let mut data = self._core.alloc.borrow_mut().read_disk(to_read, count, self._core.disk_id as u16)?;
+        let mut ofusc_data = self._core.alloc.borrow_mut().read_disk(to_read, count, self._core.disk_id as u16)?;
+        let mut data = self.ofusc(&mut ofusc_data);
         self._buffer.splice(.., data.drain(..));
         Some(())
+    }
+    
+    fn ofusc(&mut self, data: &mut Vec<u8>) -> Vec<u8> {
+        let key = AllocatorBlock::get_ofusc_key(
+            self._core.layer as u64,
+            self._core.disk_id as u64,
+            self._core.pos,
+        );
+
+        let mut out = Vec::with_capacity(data.len());
+
+        for (i, &b) in data.iter().enumerate() {
+            let shift = (i % 8) * 8;
+            let k = ((key >> shift) & 0xFF) as u8;
+            out.push(b ^ k);
+        }
+
+        data.clear(); // si de verdad quieres que sea destructivo
+        out
     }
 }
 impl fmt::Display for BaseSheetShadowdBlock{

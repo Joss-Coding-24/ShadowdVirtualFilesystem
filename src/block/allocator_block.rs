@@ -1,8 +1,13 @@
 use std::{
-    cell::RefCell, i64, path::{Path, PathBuf}, rc::Rc, u8, usize
+    path::{
+        Path, 
+        PathBuf
+    }
 };
 
-use crate::block::{AllocHadle, base_sheet_shadowd_block::BaseSheetShadowdBlock, disk_helper::DiskHelper, shadowd_block::Block};
+use crate::block::{
+    disk_helper::DiskHelper
+};
 struct DiskHelperManage {
     fragments: [Option<DiskHelper>; 4],
 }
@@ -42,9 +47,29 @@ impl AllocatorBlock{
             dir:dir.as_ref().to_path_buf()
         }
     }
-
-    pub fn get_bssb(self, pos:u64, disk_id:usize)->BaseSheetShadowdBlock{
-        BaseSheetShadowdBlock::new(pos, Rc::new(RefCell::new(self)), disk_id)
+    fn mix64(mut x: u64) -> u64 {
+        x ^= x >> 33;
+        x = x.wrapping_mul(0xff51afd7ed558ccd);
+        x ^= x >> 33;
+        x = x.wrapping_mul(0xc4ceb9fe1a85ec53);
+        x ^= x >> 33;
+        x
+    }
+    pub fn get_layer_key(layer: u64) -> u64 {
+        Self::mix64(layer.wrapping_mul(0x9E3779B97F4A7C15))
+    }
+    pub fn get_disk_key(layer_key: u64, disk: u64) -> u64 {
+        let dk = Self::mix64(disk.wrapping_mul(0x8D2668A86E396B04));
+        layer_key ^ dk
+    }
+    pub fn get_block_key(disk_key: u64, block_id: u64) -> u64 {
+        let bk = Self::mix64(block_id.wrapping_mul(0x7C1557975D2859F3));
+        disk_key ^ bk
+    }
+    pub fn get_ofusc_key(layer:u64, disk:u64, block:u64)->u64{
+        let layer_key = Self::get_layer_key(layer);
+        let disk_key = Self::get_disk_key(layer_key, disk);
+        Self::get_block_key(disk_key, block)
     }
     pub fn get_size_block()->usize{
         341
@@ -83,14 +108,9 @@ impl AllocatorBlock{
         Some(helper.read_at(count, inner_off as u64)?)
     }
 }
-fn make_option(disk:usize, frag:u8) -> Option<DiskHelper>{
-    let disk_name= format!("{}.disk{}", disk, frag);
-    Some(DiskHelper::new(&disk_name)?)
-}
 fn frag_index(frg: u64) -> Option<usize> {
     match frg {
-        0 => None,           // inválido
-        1..=4 => Some((frg - 1) as usize),
+        0..=3 => Some((frg) as usize),
         _ => None,
     }
 }
