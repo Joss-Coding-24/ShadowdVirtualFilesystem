@@ -1,3 +1,16 @@
+use std::sync::Arc;
+
+use once_cell::sync::Lazy;
+use tokio::runtime::Runtime;
+
+pub static GLOBAL_RUNTIME: Lazy<Arc<Runtime>> = Lazy::new(
+    || {
+        Arc::new(
+            Runtime::new().expect("Failed to create Tokio runtime")
+        )
+    }
+);
+
 pub mod block;
 pub mod algoritm;
 pub mod helpers;

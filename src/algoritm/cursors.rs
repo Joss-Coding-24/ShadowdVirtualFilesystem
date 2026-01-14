@@ -3,63 +3,93 @@ use crate::helpers::convertions::{
     size_to_be
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct CursorCore{
     pos:u8,
-    disk:u16,
-    type_:u8,
 }
 impl CursorCore {
-    fn new(type_:u8)->Self{
+    fn new()->Self{
         Self{
-            type_: type_,
-            disk: 0,
             pos: 0,
         }
     }
     fn charge(v: &mut Vec<u8>) -> Option<Self> {
-        if v.len() < 8 {
+        if v.len() < 5 {
             return None;
         }
 
-        // Consumimos exactamente 8 bytes
-        let chunk: Vec<u8> = v.drain(..8).collect();
+        // Consumimos exactamente 5 bytes
+        let chunk: Vec<u8> = v.drain(..5).collect();
 
         // Layout:
         // [1b type][2b disk][5b pos]
-        let type_v = &chunk[0..1];
-        let disk_v = &chunk[1..3];
-        let pos_v  = &chunk[3..8];
+        let pos_v  = &chunk[..];
 
         Some(Self {
-            type_: be_to_size(type_v, 1) as u8,
-            disk:  be_to_size(disk_v, 2) as u16,
             pos:   be_to_size(pos_v, 5) as u8,
         })
     }
     fn serialize(&self)->Vec<u8>{
-        let mut out: Vec<u8> = Vec::with_capacity(8);
-        let type_ = size_to_be(self.type_ as usize, 1);
-        let disk = size_to_be(self.disk as usize, 2);
+        let mut out: Vec<u8> = Vec::with_capacity(5);
         let pos = size_to_be(self.pos as usize, 5);
     
-        out.extend_from_slice(type_.as_slice());
-        out.extend_from_slice(disk.as_slice());
         out.extend_from_slice(pos.as_slice());
         out
     }
     fn serialize_into(&self, dst:&mut Vec<u8>){
         dst.extend(self.serialize());
     }
+    fn advance(&mut self, is_end:bool)-> u8{ //true para indicar un avance del nivrl logico siguiente
+        if self.pos == 30{
+            if is_end{
+                return 3
+            }
+            self.pos = 0;
+            1
+        }else{
+            self.pos+=1;
+            2
+        }
+    }
+    fn delay(&mut self, is_firts:bool) -> u8{
+        if self.pos == 0 {
+            if is_firts {
+                return 3
+            }
+            self.pos = 30;
+            1
+        }else{
+            self.pos-=1;
+            2
+        }
+    }
+    
+    fn in_limit(&self, in_end:bool)-> bool{
+        //si in_end es true retorna true si pos es 30
+        //si in_end es false retorna false si pos es 
+        if in_end {
+            if self.pos == 30 {
+                true
+            }else{
+                false
+            }
+        }else{
+            if self.pos == 0 {
+                true
+            }else{
+                false
+            }
+        }
+    }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cursor1{
     core:CursorCore,
 }
 impl Cursor1 {
-    fn new(type_:u8) -> Self{
+    fn new() -> Self{
         Self{
-            core: CursorCore::new(type_),
+            core: CursorCore::new(),
         }
     }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
@@ -73,18 +103,27 @@ impl Cursor1 {
     fn serialize_into(&self, dst:&mut Vec<u8>){
         self.core.serialize_into(dst);
     }
+    fn advance(&mut self, is_end:bool)->u8{
+        self.core.advance(is_end)
+    }
+    fn delay(&mut self, is_firts:bool)->u8{
+        self.core.delay(is_firts)
+    }
+    fn in_limit(&self, in_end:bool)->bool{
+        self.core.in_limit(in_end)
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cursor2{
     core:CursorCore,
     cur1:Cursor1,
 }
 impl Cursor2 {
-    fn new(type_:u8) -> Self{
+    fn new() -> Self{
         Self{
-            core:CursorCore::new(1),
-            cur1: Cursor1::new(type_),
+            core:CursorCore::new(),
+            cur1: Cursor1::new(),
         }
     }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
@@ -101,17 +140,40 @@ impl Cursor2 {
         self.core.serialize_into(dst);
         self.cur1.serialize_into(dst);
     }
+    fn advance(&mut self, is_end_:bool)->u8{
+        let is_end = (self.core.pos == 30) && is_end_;
+        let advance_r = self.cur1.advance(is_end);
+        match advance_r {
+            1 => self.core.advance(is_end),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn delay(&mut self, is_firts_:bool)->u8{
+        let is_firts = (self.core.pos == 30) && is_firts_;
+        let delay_r = self.cur1.delay(is_firts);
+        match delay_r {
+            1 => self.core.delay(is_firts),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn in_limit(&self, in_end:bool) -> bool{
+        let core_in = self.core.in_limit(in_end);
+        let cur_in = self.cur1.in_limit(in_end);
+        core_in && cur_in
+    }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cursor3{
     core:CursorCore,
     cur2:Cursor2,
 }
 impl Cursor3 {
-    fn new(type_:u8)->Self{
+    fn new()->Self{
         Self { 
-            core: CursorCore::new(2), 
-            cur2: Cursor2::new(type_)
+            core: CursorCore::new(), 
+            cur2: Cursor2::new()
         }
     }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
@@ -128,17 +190,40 @@ impl Cursor3 {
         self.core.serialize_into(dst);
         self.cur2.serialize_into(dst);
     }
+    fn advance(&mut self, is_end_:bool)->u8{
+        let is_end = (self.core.pos == 30) && is_end_;
+        let advance_r = self.cur2.advance(is_end);
+        match advance_r {
+            1 => self.core.advance(is_end),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn delay(&mut self, is_firts_:bool)->u8{
+        let is_firts = (self.core.pos == 30) && is_firts_;
+        let delay_r = self.cur2.delay(is_firts);
+        match delay_r {
+            1 => self.core.delay(is_firts),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn in_limit(&self, in_end:bool) -> bool{
+        let core_in = self.core.in_limit(in_end);
+        let cur_in = self.cur2.in_limit(in_end);
+        core_in && cur_in
+    }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cursor4{
     core:CursorCore,
     cur3:Cursor3,
 }
 impl Cursor4 {
-    fn new (type_:u8)->Self{
+    fn new ()->Self{
         Self { 
-            core: CursorCore::new(3), 
-            cur3: Cursor3::new(type_) 
+            core: CursorCore::new(), 
+            cur3: Cursor3::new() 
         }
     }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
@@ -155,18 +240,41 @@ impl Cursor4 {
         self.core.serialize_into(dst);
         self.cur3.serialize_into(dst);
     }
+    fn advance(&mut self, is_end_:bool)->u8{
+        let is_end = (self.core.pos == 30) && is_end_;
+        let advance_r = self.cur3.advance(is_end);
+        match advance_r {
+            1 => self.core.advance(is_end),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn delay(&mut self, is_firts_:bool)->u8{
+        let is_firts = (self.core.pos == 30) && is_firts_;
+        let delay_r = self.cur3.delay(is_firts);
+        match delay_r {
+            1 => self.core.delay(is_firts),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn in_limit(&self, in_end:bool) -> bool{
+        let core_in = self.core.in_limit(in_end);
+        let cur_in = self.cur3.in_limit(in_end);
+        core_in && cur_in
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Cursor5{
     core:CursorCore,
     cur4:Cursor4,
 }
 impl Cursor5 {
-    fn new(type_:u8)->Self{
+    fn new()->Self{
         Self { 
-            core: CursorCore::new(4), 
-            cur4: Cursor4::new(type_)
+            core: CursorCore::new(), 
+            cur4: Cursor4::new()
         }
     }
     fn charge(v: &mut Vec<u8>)-> Option<Self>{
@@ -183,8 +291,31 @@ impl Cursor5 {
         self.core.serialize_into(dst);
         self.cur4.serialize_into(dst);
     }
+    fn advance(&mut self, is_end_:bool)->u8{
+        let is_end = (self.core.pos == 30) && is_end_;
+        let advance_r = self.cur4.advance(is_end);
+        match advance_r {
+            1 => self.core.advance(is_end),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn delay(&mut self, is_firts_:bool)->u8{
+        let is_firts = (self.core.pos == 30) && is_firts_;
+        let delay_r = self.cur4.delay(is_firts);
+        match delay_r {
+            1 => self.core.delay(is_firts),
+            2 => 2,
+            _ => 3
+        }
+    }
+    fn in_limit(&self, in_end:bool) -> bool{
+        let core_in = self.core.in_limit(in_end);
+        let cur_in = self.cur4.in_limit(in_end);
+        core_in && cur_in
+    }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cursor{
     cur6:Cursor1,
     cur5:Cursor5,
@@ -197,12 +328,12 @@ pub struct Cursor{
 impl Cursor {
     pub fn new()->Self{
         Self { 
-            cur6: Cursor1::new(5), 
-            cur5: Cursor5::new(4), 
-            cur4: Cursor4::new(3),
-            cur3: Cursor3::new(2), 
-            cur2: Cursor2::new(1), 
-            cur1: Cursor1::new(1), 
+            cur6: Cursor1::new(), 
+            cur5: Cursor5::new(), 
+            cur4: Cursor4::new(),
+            cur3: Cursor3::new(), 
+            cur2: Cursor2::new(), 
+            cur1: Cursor1::new(), 
             layer: 6
         }
     }
@@ -247,27 +378,95 @@ impl Cursor {
             false
         }
     }
-    pub fn get_disk(&self, cn:u8) -> Option<u16>{
-        self.resolve_core(cn).map(|c| c.disk)
+    fn in_limit(&self, in_end:bool)->bool{
+        let c1 = self.cur1.in_limit(in_end);
+        let c2 = self.cur2.in_limit(in_end);
+        let c3 = self.cur3.in_limit(in_end);
+        let c4 = self.cur4.in_limit(in_end);
+        let c5 = self.cur5.in_limit(in_end);
+        let c6 = self.cur6.in_limit(in_end);
+        c1 && c2 && c3 && c4 && c5 && c6
     }
-    pub fn set_disk(&mut self, cn:u8, v:u16) -> bool{
-        if let Some(core) = self.resolve_core_mut(cn){
-            core.disk = v;
-            true
+    pub fn advance(&mut self)->u8{
+        let is_end = self.in_limit(true);
+
+        let r1 = self.cur1.advance(is_end);
+
+        let r2 = if r1 == 1 {
+            self.cur2.advance(is_end)
         }else{
-            false
-        }
-    }
-    pub fn get_type(&self, cn:u8) -> Option<u8>{
-        self.resolve_core(cn).map(|c| c.type_)
-    }
-    pub fn set_type(&mut self, cn:u8, v:u8) -> bool{
-        if let Some(core) = self.resolve_core_mut(cn){
-            core.type_ = v;
-            true
+            return r1;
+        };
+        let is_end = self.in_limit(true);
+
+        let r3 = if r2 == 1{
+            self.cur3.advance(is_end)
         }else{
-            false
-        }
+            return r2;
+        };
+        let is_end = self.in_limit(true);
+       
+        let r4 = if r3 == 1{
+            self.cur4.advance(is_end)
+        }else{
+            return r3;
+        };
+        let is_end = self.in_limit(true);
+
+        let r5 = if r4 == 1{
+            self.cur5.advance(is_end)
+        }else{
+            return r4;
+        };
+        let is_end = self.in_limit(true);
+
+        let r6 = if r5 == 1{
+            self.cur6.advance(is_end)
+        }else{
+            return r5;
+        };
+        r6
+    }
+    fn delay(&mut self)-> u8{
+        let is_firts = self.in_limit(false);
+        let r1 = self.cur1.delay(is_firts);
+        let is_firts =self.in_limit(false);
+        
+        let r2 = if r1 == 1 {
+            self.cur2.delay(is_firts)
+        }else{
+            return r1;
+        };
+        let is_firts =self.in_limit(false);
+
+        let r3 = if r2 == 1{
+            self.cur3.delay(is_firts)
+        }else{
+            return r2;
+        };
+        let is_firts = self.in_limit(false);
+
+        let r4 = if r3 == 1 {
+            self.cur4.delay(is_firts)
+        }else{
+            return r3;
+        };
+        let is_firts = self.in_limit(false);
+
+        let r5 = if r4 == 1 {
+            self.cur5.delay(is_firts)
+        }else{
+            return r4;
+        };
+        let is_firts = self.in_limit(false);
+
+        let r6 = if r5 == 1 {
+            self.cur6.delay(is_firts)
+        }else{
+            return r5;
+        };
+
+        r6
     }
 }
 

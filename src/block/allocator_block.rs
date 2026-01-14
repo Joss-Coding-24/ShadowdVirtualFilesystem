@@ -72,7 +72,7 @@ impl AllocatorBlock{
         Self::get_block_key(disk_key, block)
     }
     pub fn get_size_block()->usize{
-        341
+        345
     }
     pub fn write_disk(
         &mut self,
