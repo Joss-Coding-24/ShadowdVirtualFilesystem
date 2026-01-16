@@ -5,12 +5,24 @@ use crate::{GLOBAL_RUNTIME, algoritm::cursors::Cursor, block::insert_helpers::{T
 //Nota para mi yo del futuro, cualquier espectador u otro
 //Este es mi primer encuentro con cocurrencia aplica... me estoy guiando por la ducumentacion
 #[derive(Clone)]
-struct ShadowdDispatcher{
+pub struct ShadowdDispatcher{
     cur: Cursor,
     sheduler: Arc<Runtime>,
     option: TransitOption,
     data: Vec<u8>,
     state: TransitStates,
+}
+
+impl ShadowdDispatcher {
+    pub fn get_cur(&self)-> &Cursor{
+        &self.cur
+    }
+    pub fn get_data(&self) -> &Vec<u8>{
+        &self.data
+    }
+    pub fn get_state(&self) -> TransitStates {
+        self.state
+    }
 }
 
 impl ShadowdDispatcher {

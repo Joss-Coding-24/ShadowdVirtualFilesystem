@@ -16,6 +16,10 @@ pub mod shadowd_block;
 /// No solo es el bloque base de todos los bloques, si no tambien es el encargado de gestionar los datos reales
 /// Tambien es el encargado de hacer que cada uno de los demas bloques funcionen
 pub mod base_sheet_shadowd_block;
+/// Base Branch Shadowd Block
+/// Segundo nivel de un cursor
+/// Es el encargado de gestionar los BaseSheetShadowdBlock
+pub mod base_branch_shadowd_block_1;
 /// Insert helpers.
 /// Brinda contexto en modificacion del buffer y operaciones de trasporte de datos
 pub mod insert_helpers;

@@ -427,7 +427,7 @@ impl Cursor {
         };
         r6
     }
-    fn delay(&mut self)-> u8{
+    pub fn delay(&mut self)-> u8{
         let is_firts = self.in_limit(false);
         let r1 = self.cur1.delay(is_firts);
         let is_firts =self.in_limit(false);

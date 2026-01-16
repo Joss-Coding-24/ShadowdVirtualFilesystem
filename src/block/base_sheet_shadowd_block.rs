@@ -920,7 +920,7 @@ impl fmt::Display for BaseSheetShadowdBlock {
 /// - `bs_sb`: Bloque base real que contiene los datos
 pub struct EntrySheetShadowdBlock {
     pos: usize,
-    bs_sb: Option<BaseSheetShadowdBlock>,
+    pub bs_sb: Option<BaseSheetShadowdBlock>,
 }
 
 impl EntrySheetShadowdBlock {
