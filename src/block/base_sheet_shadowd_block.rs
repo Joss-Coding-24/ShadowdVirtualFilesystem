@@ -181,7 +181,6 @@ impl Block for BaseSheetShadowdBlock {
     /// Escribe datos en el bloque siguiendo un cursor específico.
     ///
     /// # Parámetros
-    /// - `cur`: Cursor que indica la posición de escritura
     /// - `data`: Datos a escribir en el bloque
     ///
     /// # Comportamiento
@@ -198,12 +197,10 @@ impl Block for BaseSheetShadowdBlock {
     /// - `BufferIsFull`: El bloque está lleno
     /// - `InsertedWithoutRemaining`: Todos los datos fueron escritos
     /// - `InsertedWithRemaining`: Solo parte de los datos fueron escritos
-    fn write_block(&mut self, cur: &Cursor, data: &mut Vec<u8>) -> Option<InsertResult> {
+    fn write_block(&mut self, data: &mut Vec<u8>) -> Option<InsertResult> {
         if !self.loaded {
             self.read_intern()?;
         }
-        
-        let _sym = cur; // Uso simbólico para evitar advertencias
         
         // Verificar si el bloque está lleno
         if self.free_bytes == 0 {
@@ -929,5 +926,8 @@ impl EntrySheetShadowdBlock {
     }
     pub fn is_valid(&self) -> bool{
         self.bs_sb.is_some()
+    }
+    pub fn get_bs(&mut self)->&mut Option<BaseSheetShadowdBlock>{
+        &mut self.bs_sb
     }
 }

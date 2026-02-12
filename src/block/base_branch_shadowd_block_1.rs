@@ -1,15 +1,15 @@
-use std::sync::{Arc, RwLock};
+use std::{mem::take, sync::{Arc, RwLock}};
 
-use crate::{algoritm::cursors::Cursor, block::{AllocHadle, base_sheet_shadowd_block::{BaseSheetShadowdBlock, EntrySheetShadowdBlock}, disk_helper, insert_helpers::{InsertResult, TransitOptions, TransitReturn}, shadowd_block::Block}};
+use crate::{algoritm::cursors::Cursor, block::{AllocHadle, base_sheet_shadowd_block::{BaseSheetShadowdBlock, EntrySheetShadowdBlock}, disk_helper, insert_helpers::{BufferStates, InsertResult, InsertResultItem, TransitOptions, TransitReturn}, shadowd_block::Block}};
 
-struct BaseBranchShadowdBlock_1{
+struct BaseBranchShadowdBlock1{
     root:BaseSheetShadowdBlock,
     childs:Arc<RwLock<Vec<EntrySheetShadowdBlock>>>,
     write_count:usize,
     salve_count:usize,
 }
 
-impl Block for BaseBranchShadowdBlock_1 {
+impl Block for BaseBranchShadowdBlock1 {
     type Buffer = Vec<EntrySheetShadowdBlock>;
 
     fn new(pos:u64, alloc:AllocHadle, disk_id: usize, layer: u8
@@ -27,19 +27,57 @@ impl Block for BaseBranchShadowdBlock_1 {
         if self.write_count == self.salve_count {
             Some(())
         }else{
-            let buff = self.childs.write().ok()?;
+            let buff = &mut self.childs.write().ok()?;
             for i in self.write_count..buff.len(){
-                let v = buff[i];
+                let v = &mut buff[i];
                 if v.is_valid(){
-                    let block = v.bs_sb.unwrap();
-                    
+                    let block =v.get_bs().as_mut()?;
+                    block.write_intern();
+                }else{
+                    self.salve_count = i;
                 }
             };
+            Some(())
         }
     }
     
-    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>)->Option<InsertResult> {
-        todo!()
+    fn write_block(&mut self, data:&mut Vec<u8>)->Option<InsertResult> {
+        if self.write_count == 31{
+            return Some(InsertResult{
+                result: InsertResultItem::BufferIsFull,
+                state: BufferStates::Full,
+                remaining: data.len(),
+                written: 0,
+                remaining_bytes: take(data)
+            })
+        }
+        let mut buff = self.childs.write().ok()?;
+        let mut bytes = take(data);
+        for i in self.write_count..31{
+            if buff.len() <= i {
+                self.gen_child(i);
+            }
+            let mut block = &mut buff[i];
+            if !block.is_valid() {
+                self.gen_child(i);
+                block = &mut buff[i];
+            }        
+            let size = bytes.len();
+            let bs = block.get_bs().as_mut()?;
+            let result = bs.write_block(data)?;
+            
+            if result.remaining + result.written == size {
+                self.write_count += 1;
+                bytes = take(&mut result.remaining_bytes.clone())// aca se destruye igual, el clone es solo para poner el &mut
+            }else{
+                break;
+            }
+
+            if bytes.len() == 0 {
+                break;
+            }
+        };
+        None
     }
     
     fn read_to(&mut self, cur: &Cursor, size: usize) -> Option<Vec<u8>> {
@@ -59,6 +97,7 @@ impl Block for BaseBranchShadowdBlock_1 {
     }
 }
 
-impl BaseBranchShadowdBlock_1 {
+impl BaseBranchShadowdBlock1 {
     fn read_intern(&mut self){}
+    fn gen_child(&self, pos:usize){}
 }

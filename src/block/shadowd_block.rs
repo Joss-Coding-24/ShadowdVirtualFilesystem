@@ -27,7 +27,7 @@ pub trait Block{
 
     fn new(pos:u64, alloc:AllocHadle, disk_id:usize, layer:u8)->Self;
     fn write_intern(&mut self) -> Option<()>;
-    fn write_block(&mut self, cur:&Cursor, data:&mut Vec<u8>)->Option<InsertResult>;
+    fn write_block(&mut self, data:&mut Vec<u8>)->Option<InsertResult>;
     fn read_to(&mut self, cur: &Cursor, size: usize) -> Option<Vec<u8>>;
     fn clear_block_childs(&mut self)->Option<bool>;
     fn remove_to(&mut self, options:&TransitOptions)->Option<TransitReturn>;
