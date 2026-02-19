@@ -299,16 +299,31 @@ impl Block for BaseSheetShadowdBlock {
     /// # Notas
     /// - La posición se calcula como `pos * 11` (tamaño fijo de entrada)
     /// - Si el bloque no está cargado, se carga automáticamente
-    fn read_to(&mut self, cur: &Cursor, size: usize) -> Option<Vec<u8>> {
+    fn read_to(&mut self, cur: &mut Cursor, size: usize) -> Option<Vec<u8>> {
         // Cargar bloque si es necesario
         if self.free_bytes > self._data {
             self.read_intern()?;
         }
 
         let buff = self._buffer.read().ok()?;
-        let offset = cur.get_pos(1)? as usize * 11;
+        let offset_ = cur.get_pos(1)? as usize;
         let end = offset.saturating_add(size).min(buff.len());
-        Some(buff[offset..end].to_vec())
+        let vec = buff[offset..end].to_vec();
+        let sized = vec.len();
+        let mut count = 0;
+        loop {
+            if sized == count {
+                break;
+            }
+            if sized-count < 11 {
+                break; // este fracmento sera leido nuevamente cuanto de llame a esta funcion mas adelante
+            }
+            if cur.advance() != 2 {
+                return None; //out of range
+            }
+            count += 11;
+        }
+        Some(vec)
     }
 
     /// Limpia todos los datos del bloque y sus referencias.

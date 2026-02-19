@@ -80,8 +80,30 @@ impl Block for BaseBranchShadowdBlock1 {
         None
     }
     
-    fn read_to(&mut self, cur: &Cursor, size: usize) -> Option<Vec<u8>> {
-        todo!()
+    fn read_to(&mut self, cur: &mut Cursor, size: usize) -> Option<Vec<u8>> {
+        let mut buff = Vec::new();
+        let mut cout = 0;
+        
+        loop {
+            if cout == size {
+                break ;
+            };
+
+            let actual = cur.get_pos(1)?;
+            let childs = &mut self.childs.read().ok()?;
+                let block: &mut EntrySheetShadowdBlock = childs[actual];
+                if block.is_valid(){
+                    let to_read = size-cout;
+                    if let chunk = block.bs_sb?.read_to(cur, to_read)?;
+                    let sized = chunk.len();
+                    if sized == 0 {
+                        break
+                    }
+                    cout += sized;
+                    buff.extend_from_slice(chunk.as_slice());
+                }
+        };
+        Some(buff)
     }
     
     fn clear_block_childs(&mut self)->Option<bool> {

@@ -39,7 +39,7 @@ impl CursorCore {
     fn serialize_into(&self, dst:&mut Vec<u8>){
         dst.extend(self.serialize());
     }
-    fn advance(&mut self, is_end:bool)-> u8{ //true para indicar un avance del nivrl logico siguiente
+    fn advance(&mut self, is_end:bool)-> u8{ //true para indicar un avance del nivel logico siguiente
         if self.pos == 30{
             if is_end{
                 return 3
