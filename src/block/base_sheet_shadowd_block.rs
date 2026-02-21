@@ -40,7 +40,9 @@ use std::{
     sync::{
         Arc,
         RwLock
-    }
+    }, 
+    u64,
+    usize
 };
 
 /// Bloque Base de Shadowd que almacena datos físicos.
@@ -307,6 +309,7 @@ impl Block for BaseSheetShadowdBlock {
 
         let buff = self._buffer.read().ok()?;
         let offset_ = cur.get_pos(1)? as usize;
+        let offset = offset_*11;
         let end = offset.saturating_add(size).min(buff.len());
         let vec = buff[offset..end].to_vec();
         let sized = vec.len();
@@ -932,17 +935,28 @@ impl fmt::Display for BaseSheetShadowdBlock {
 /// - `bs_sb`: Bloque base real que contiene los datos
 pub struct EntrySheetShadowdBlock {
     pos: usize,
-    pub bs_sb: Option<BaseSheetShadowdBlock>,
+    bs_sb: BaseSheetShadowdBlock,
+    is_valid:bool,
 }
 
 impl EntrySheetShadowdBlock {
+    pub fn new_invalid(pos:usize, bs_sb:BaseSheetShadowdBlock) -> Self{
+        Self { pos, bs_sb, is_valid: false }
+    }
+    pub fn new_valid(pos:usize, bs_sb:BaseSheetShadowdBlock) -> Self{
+        Self { pos, bs_sb, is_valid: true }
+    }
     pub fn get_pos(&self) -> usize{
         self.pos
     }
     pub fn is_valid(&self) -> bool{
-        self.bs_sb.is_some()
+        self.is_valid
     }
-    pub fn get_bs(&mut self)->&mut Option<BaseSheetShadowdBlock>{
-        &mut self.bs_sb
+    pub fn get_bs(&mut self)-> Option<&mut BaseSheetShadowdBlock>{
+        if self.is_valid {
+            Some(&mut self.bs_sb)
+        }else{
+            None
+        }
     }
 }

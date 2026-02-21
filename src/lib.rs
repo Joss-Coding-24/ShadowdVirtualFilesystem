@@ -95,11 +95,11 @@ mod tests {
         let mut data_1_v = Vec::new();
         data_1_v.extend_from_slice(data_1.as_bytes());
         let data_1_l = data_1_v.len().clone();
-        let cur = Cursor::new(); // creamos un cursor apuntando a init
+        let cur = &mut Cursor::new(); // creamos un cursor apuntando a init
 
         assert_eq!(block.writed_bytes(), 0, "el bloque deberia de estar vacio");
         
-        let result_1 = block.write_block(&cur, &mut data_1_v.clone());
+        let result_1 = block.write_block(&mut data_1_v.clone());
         assert!(result_1.is_some(), "algo fallo en escritura");
         let u_result_1 = result_1.unwrap();
         assert_eq!(u_result_1.remaining, 0, "No deberian de sobrar bytes aqui");
@@ -113,7 +113,7 @@ mod tests {
             0, 
             1
         );
-        let result_2 = block2.read_to(&cur, data_1_l);
+        let result_2 = block2.read_to(cur, data_1_l);
         assert!(result_2.is_some(), "algo salio mal leyendo");
         let val = result_2.unwrap();
         assert_eq!(val, data_1_v, "La ofuscacion tiene errores")
